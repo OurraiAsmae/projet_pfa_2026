@@ -1,0 +1,76 @@
+{
+  "tx_id": "TX-DEM-ENCADRANT",
+  "feature_names": [
+    "heure",
+    "jour_semaine",
+    "est_weekend",
+    "montant_mad",
+    "type_transaction",
+    "pays_transaction",
+    "est_etranger",
+    "tx_lat",
+    "tx_lon",
+    "delta_km",
+    "delta_min_last_tx",
+    "nb_tx_1h",
+    "device_type",
+    "est_nouveau_device",
+    "age_client",
+    "segment_revenu",
+    "type_carte"
+  ],
+  "shap_values": [
+    0.10415926959404295,
+    -0.0025750244872926563,
+    -1.7457891650420645e-05,
+    0.01369628039734126,
+    -0.002239947729582207,
+    0.008666312730775904,
+    0.05872930943502333,
+    0.2928298666714825,
+    -0.0158473816093135,
+    -0.0010497154812460212,
+    0.007888169802101419,
+    0.012831929028269963,
+    -0.03305842198669976,
+    0.03085823351352429,
+    -0.0002661313567489373,
+    -0.00423076097664763,
+    -0.0058748822160872155
+  ],
+  "base_value": 0.5000189204798036,
+  "top_features": [
+    {
+      "feature": "tx_lat",
+      "shap_value": 0.2928298666714825,
+      "abs_importance": 0.2928298666714825,
+      "feature_value": 33.57
+    },
+    {
+      "feature": "heure",
+      "shap_value": 0.10415926959404295,
+      "abs_importance": 0.10415926959404295,
+      "feature_value": 3.0
+    },
+    {
+      "feature": "est_etranger",
+      "shap_value": 0.05872930943502333,
+      "abs_importance": 0.05872930943502333,
+      "feature_value": 1.0
+    },
+    {
+      "feature": "device_type",
+      "shap_value": -0.03305842198669976,
+      "abs_importance": 0.03305842198669976,
+      "feature_value": 0.0
+    },
+    {
+      "feature": "est_nouveau_device",
+      "shap_value": 0.03085823351352429,
+      "abs_importance": 0.03085823351352429,
+      "feature_value": 1.0
+    }
+  ],
+  "model_type": "RandomForestClassifier",
+  "n_features": 17
+}

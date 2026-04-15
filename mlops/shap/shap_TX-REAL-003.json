@@ -1,0 +1,76 @@
+{
+  "tx_id": "TX-REAL-003",
+  "feature_names": [
+    "feature_0",
+    "feature_1",
+    "feature_2",
+    "feature_3",
+    "feature_4",
+    "feature_5",
+    "feature_6",
+    "feature_7",
+    "feature_8",
+    "feature_9",
+    "feature_10",
+    "feature_11",
+    "feature_12",
+    "feature_13",
+    "feature_14",
+    "feature_15",
+    "feature_16"
+  ],
+  "shap_values": [
+    0.16057014008430207,
+    -0.003624863498411565,
+    0.00046860261832080415,
+    -0.01758847568150812,
+    -0.005131454565053884,
+    -0.004168967193997602,
+    0.042377035980225575,
+    -0.10414123444484126,
+    -0.022767883842039247,
+    -0.0007727118126334011,
+    0.017397484922010265,
+    -0.0018948664186968554,
+    -0.04933653688673424,
+    0.014490344758995138,
+    -0.003993293157875377,
+    -0.005603128854993704,
+    -0.0060231431090335755
+  ],
+  "base_value": 0.5000189204798036,
+  "top_features": [
+    {
+      "feature": "feature_0",
+      "shap_value": 0.16057014008430207,
+      "abs_importance": 0.16057014008430207,
+      "feature_value": 0.0
+    },
+    {
+      "feature": "feature_7",
+      "shap_value": -0.10414123444484126,
+      "abs_importance": 0.10414123444484126,
+      "feature_value": 0.0
+    },
+    {
+      "feature": "feature_12",
+      "shap_value": -0.04933653688673424,
+      "abs_importance": 0.04933653688673424,
+      "feature_value": 0.0
+    },
+    {
+      "feature": "feature_6",
+      "shap_value": 0.042377035980225575,
+      "abs_importance": 0.042377035980225575,
+      "feature_value": 0.0
+    },
+    {
+      "feature": "feature_8",
+      "shap_value": -0.022767883842039247,
+      "abs_importance": 0.022767883842039247,
+      "feature_value": 0.0
+    }
+  ],
+  "model_type": "RandomForestClassifier",
+  "n_features": 17
+}

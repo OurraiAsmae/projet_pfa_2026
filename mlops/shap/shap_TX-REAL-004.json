@@ -1,0 +1,76 @@
+{
+  "tx_id": "TX-REAL-004",
+  "feature_names": [
+    "heure",
+    "jour_semaine",
+    "est_weekend",
+    "montant_mad",
+    "type_transaction",
+    "pays_transaction",
+    "est_etranger",
+    "tx_lat",
+    "tx_lon",
+    "delta_km",
+    "delta_min_last_tx",
+    "nb_tx_1h",
+    "device_type",
+    "est_nouveau_device",
+    "age_client",
+    "segment_revenu",
+    "type_carte"
+  ],
+  "shap_values": [
+    0.08263032473681345,
+    -0.0010911578712867358,
+    -0.003274193610866868,
+    -0.003285348719726315,
+    0.03517373741245178,
+    0.004964970120067371,
+    0.05604590418821782,
+    0.23701940931106916,
+    0.05070282022356231,
+    -0.0031557740050542206,
+    0.0009705395628561162,
+    -0.01902495835613732,
+    -0.030937190635682586,
+    0.02915096176227615,
+    -0.0012506560549570465,
+    -0.003466727462623187,
+    -0.004294373177212023
+  ],
+  "base_value": 0.5000189204798036,
+  "top_features": [
+    {
+      "feature": "tx_lat",
+      "shap_value": 0.23701940931106916,
+      "abs_importance": 0.23701940931106916,
+      "feature_value": 48.85
+    },
+    {
+      "feature": "heure",
+      "shap_value": 0.08263032473681345,
+      "abs_importance": 0.08263032473681345,
+      "feature_value": 3.0
+    },
+    {
+      "feature": "est_etranger",
+      "shap_value": 0.05604590418821782,
+      "abs_importance": 0.05604590418821782,
+      "feature_value": 1.0
+    },
+    {
+      "feature": "tx_lon",
+      "shap_value": 0.05070282022356231,
+      "abs_importance": 0.05070282022356231,
+      "feature_value": 2.35
+    },
+    {
+      "feature": "type_transaction",
+      "shap_value": 0.03517373741245178,
+      "abs_importance": 0.03517373741245178,
+      "feature_value": 2.0
+    }
+  ],
+  "model_type": "RandomForestClassifier",
+  "n_features": 17
+}

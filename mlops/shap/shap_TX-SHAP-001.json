@@ -1,0 +1,76 @@
+{
+  "tx_id": "TX-SHAP-001",
+  "feature_names": [
+    "amount",
+    "hour",
+    "day_of_week",
+    "merchant_category",
+    "distance_from_home",
+    "distance_from_last_transaction",
+    "ratio_to_median_purchase_price",
+    "repeat_retailer",
+    "used_chip",
+    "used_pin_number",
+    "online_order",
+    "n_transactions_last_10min",
+    "n_transactions_last_hour",
+    "n_transactions_last_day",
+    "avg_amount_last_10",
+    "velocity_score",
+    "risk_score"
+  ],
+  "shap_values": [
+    -0.041714562011083825,
+    -0.002197080127484336,
+    -0.00341110800768533,
+    -0.04221725942275956,
+    0.06534704883105329,
+    -0.0036493384048038352,
+    0.04134484709132831,
+    -0.12406142942757543,
+    -0.033825998742105075,
+    -0.0006948719555689982,
+    0.018406913581206677,
+    -0.02740206554378693,
+    -0.04615180482919114,
+    0.012089100173809502,
+    -0.004486752890666092,
+    -0.007272778597596582,
+    -0.009385701861962562
+  ],
+  "base_value": 0.5000189204798036,
+  "top_features": [
+    {
+      "feature": "repeat_retailer",
+      "shap_value": -0.12406142942757543,
+      "abs_importance": 0.12406142942757543,
+      "feature_value": 0.0
+    },
+    {
+      "feature": "distance_from_home",
+      "shap_value": 0.06534704883105329,
+      "abs_importance": 0.06534704883105329,
+      "feature_value": 150.0
+    },
+    {
+      "feature": "n_transactions_last_hour",
+      "shap_value": -0.04615180482919114,
+      "abs_importance": 0.04615180482919114,
+      "feature_value": 0.0
+    },
+    {
+      "feature": "merchant_category",
+      "shap_value": -0.04221725942275956,
+      "abs_importance": 0.04221725942275956,
+      "feature_value": 0.0
+    },
+    {
+      "feature": "amount",
+      "shap_value": -0.041714562011083825,
+      "abs_importance": 0.041714562011083825,
+      "feature_value": 15000.0
+    }
+  ],
+  "model_type": "RandomForestClassifier",
+  "n_features": 17
+}

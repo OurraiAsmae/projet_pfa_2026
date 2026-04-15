@@ -1,0 +1,30 @@
+OrdererOrgs:
+  - Name: Orderer
+    Domain: fraud-governance.com
+    Specs:
+      - Hostname: orderer
+
+PeerOrgs:
+  - Name: Bank
+    Domain: bank.fraud-governance.com
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+    Users:
+      Count: 5
+
+  - Name: Audit
+    Domain: audit.fraud-governance.com
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+    Users:
+      Count: 1
+
+  - Name: Regulator
+    Domain: regulator.fraud-governance.com
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+    Users:
+      Count: 1
