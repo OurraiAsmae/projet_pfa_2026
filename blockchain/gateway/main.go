@@ -160,9 +160,42 @@ func main() {
 	http.HandleFunc("/health", healthHandler)
 	http.HandleFunc("/record-decision", recordDecisionHandler)
 	http.HandleFunc("/submit-model", submitModelHandler)
+	http.HandleFunc("/record-drift", recordDriftHandler)
 
 	port := getEnv("PORT", "9999")
 	log.Printf("Gateway port %s | crypto=%s | cfg=%s | peer=%s",
 		port, cryptoPath, fabricCfg, peerBin)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
+}
+
+func recordDriftHandler(w http.ResponseWriter, r *http.Request) {
+	var req map[string]string
+	json.NewDecoder(r.Body).Decode(&req)
+
+	out, err := peerInvoke(
+		"modelgovernance", "model-governance-cc", "RecordDrift",
+		[]string{
+			req["model_id"],
+			req["drift_score"],
+			req["affected_features"],
+			req["severity"],
+			req["auc_degradation"],
+			req["recommendation"],
+		},
+		"User3@bank.fraud-governance.com",
+	)
+
+	resp := APIResponse{ID: req["model_id"]}
+	if err != nil {
+		resp.Success = false
+		resp.Message = out
+		log.Printf("ERREUR RecordDrift %s: %s", req["model_id"], out)
+	} else {
+		resp.Success = true
+		resp.Message = "Drift enregistré sur blockchain"
+		log.Printf("OK RecordDrift %s severity=%s", req["model_id"], req["severity"])
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }

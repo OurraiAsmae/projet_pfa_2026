@@ -694,3 +694,90 @@ elif role == "Régulateur":
         st.info("Rapports publiés sur le channel regulatory par AuditOrg.")
         st.metric("Rapports reçus ce mois", "0")
         st.info("💡 Les rapports sont publiés automatiquement via PublishToRegulator()")
+
+# ═══════════════════════════════════════
+# PAGE DRIFT — ML ENGINEER
+# ═══════════════════════════════════════
+# Ajouter dans le menu ML Engineer
+# page == "Drift Monitoring"
+def show_drift_page(API_URL):
+    import httpx, json
+    st = __import__('streamlit')
+
+    st.title("📉 Drift Monitoring — Evidently AI")
+    st.info("Surveillance de la dégradation du Random Forest en production.")
+
+    col1, col2 = st.columns([3,1])
+    with col2:
+        if st.button("🔄 Rafraîchir"):
+            st.rerun()
+
+    try:
+        # Drift latest
+        resp = httpx.get(f"{API_URL}/drift/latest", timeout=5.0)
+        d = resp.json()
+
+        if d.get("status") == "no_data":
+            st.warning("Aucun rapport drift disponible.")
+            return
+
+        # Status global
+        drift_ok = not d.get("drift_detected", False)
+        share = d.get("drift_share", 0)
+
+        if share > 0.30:
+            st.error("🔴 DRIFT CRITIQUE — Réentraînement urgent requis !")
+        elif share > 0.15:
+            st.warning("🟡 DRIFT DÉTECTÉ — Surveillance rapprochée requise")
+        else:
+            st.success("🟢 Pas de drift significatif")
+
+        # Métriques
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Drift Share", f"{share:.2%}")
+        with col2:
+            st.metric("Features driftées", d.get("n_drifted_features", 0))
+        with col3:
+            auc = d.get("model_auc_current", 0)
+            ref_auc = d.get("model_auc_reference", 0.9503)
+            st.metric("AUC Production", f"{auc:.4f}",
+                     delta=f"{auc-ref_auc:.4f}")
+        with col4:
+            deg = d.get("auc_degradation", 0)
+            st.metric("Dégradation AUC", f"{deg:.4f}",
+                     delta_color="inverse")
+
+        # Features driftées
+        if d.get("drifted_features"):
+            st.subheader("⚠️ Features avec drift")
+            import pandas as pd
+            df = pd.DataFrame(d["drifted_features"])
+            st.dataframe(df, use_container_width=True)
+
+        # Historique
+        hist_resp = httpx.get(f"{API_URL}/drift/history", timeout=5.0)
+        history = hist_resp.json().get("history", [])
+        if history:
+            st.subheader("📈 Historique Drift")
+            import pandas as pd
+            df_hist = pd.DataFrame(history)
+            if "model_auc" in df_hist.columns:
+                st.line_chart(df_hist.set_index("timestamp")["model_auc"])
+
+        # Alertes
+        alerts_resp = httpx.get(f"{API_URL}/drift/alerts", timeout=5.0)
+        alerts = alerts_resp.json().get("alerts", [])
+        if alerts:
+            st.subheader("🚨 Alertes actives")
+            for a in alerts:
+                sev = a.get("severity", "")
+                if sev == "CRITICAL":
+                    st.error(f"🔴 {a['message']} — {a['timestamp']}")
+                else:
+                    st.warning(f"🟡 {a['message']} — {a['timestamp']}")
+
+        st.caption(f"Dernier check: {d.get('timestamp', 'N/A')}")
+
+    except Exception as e:
+        st.error(f"Erreur: {e}")

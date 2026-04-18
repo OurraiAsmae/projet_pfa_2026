@@ -144,3 +144,17 @@ services:
       - PEER_BIN=/fabric-bin/peer
       - PORT=9999
     networks: [fraud-net]
+  drift-monitor:
+    build: ./drift
+    volumes:
+      - /home/asmae/fraud-governance-system/mlops:/app/mlops
+      - /home/asmae/fraud-governance-system/redis:/app/redis_lib
+    environment:
+      - REDIS_HOST=redis
+      - GATEWAY_URL=http://gateway:9999
+      - API_URL=http://api:8000
+      - DRIFT_THRESHOLD=0.15
+      - CRITICAL_THRESHOLD=0.30
+      - CHECK_INTERVAL=60
+    depends_on: [redis, gateway, api]
+    networks: [fraud-net]

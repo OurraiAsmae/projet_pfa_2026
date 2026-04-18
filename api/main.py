@@ -249,3 +249,32 @@ def get_decision(tx_id: str):
         if cached:
             return {"source": "redis_cache", "data": cached}
     return {"source": "blockchain", "tx_id": tx_id}
+
+@app.get("/drift/latest")
+def get_drift_latest():
+    """Récupère le dernier rapport drift depuis Redis"""
+    if not redis_client:
+        raise HTTPException(503, "Redis non disponible")
+    data = redis_client.client.get("drift:latest")
+    if not data:
+        return {"status": "no_data", "message": "Aucun rapport drift disponible"}
+    import json as j
+    return j.loads(data)
+
+@app.get("/drift/history")
+def get_drift_history():
+    """Historique des rapports drift"""
+    if not redis_client:
+        raise HTTPException(503, "Redis non disponible")
+    history = redis_client.client.lrange("drift:history", 0, 19)
+    import json as j
+    return {"history": [j.loads(h) for h in history]}
+
+@app.get("/drift/alerts")
+def get_drift_alerts():
+    """Alertes drift actives"""
+    if not redis_client:
+        raise HTTPException(503, "Redis non disponible")
+    alerts = redis_client.client.lrange("alerts:drift", 0, 9)
+    import json as j
+    return {"alerts": [j.loads(a) for a in alerts]}
