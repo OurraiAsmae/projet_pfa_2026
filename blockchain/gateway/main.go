@@ -13,9 +13,9 @@ import (
 )
 
 var (
-	cryptoPath  = getEnv("CRYPTO_PATH", "/crypto-material")
-	fabricCfg   = getEnv("FABRIC_CFG_PATH", "/fabric-config")
-	peerBin     = getEnv("PEER_BIN", "/fabric-bin/peer")
+	cryptoPath = getEnv("CRYPTO_PATH", "/crypto-material")
+	fabricCfg  = getEnv("FABRIC_CFG_PATH", "/fabric-config")
+	peerBin    = getEnv("PEER_BIN", "/fabric-bin/peer")
 )
 
 func getEnv(key, fallback string) string {
@@ -147,6 +147,141 @@ func submitModelHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
+func recordDriftHandler(w http.ResponseWriter, r *http.Request) {
+	var req map[string]string
+	json.NewDecoder(r.Body).Decode(&req)
+
+	out, err := peerInvoke(
+		"modelgovernance", "model-governance-cc", "RecordDrift",
+		[]string{
+			req["model_id"], req["drift_score"], req["affected_features"],
+			req["severity"], req["auc_degradation"], req["recommendation"],
+		},
+		"User3@bank.fraud-governance.com",
+	)
+
+	resp := APIResponse{ID: req["model_id"]}
+	if err != nil {
+		resp.Success = false
+		resp.Message = out
+	} else {
+		resp.Success = true
+		resp.Message = "Drift enregistre sur blockchain"
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+func validateComplianceHandler(w http.ResponseWriter, r *http.Request) {
+	var req map[string]string
+	json.NewDecoder(r.Body).Decode(&req)
+	out, err := peerInvoke(
+		"modelgovernance", "model-governance-cc", "ValidateCompliance",
+		[]string{req["model_id"], "User2@bank.fraud-governance.com"},
+		"User2@bank.fraud-governance.com",
+	)
+	resp := APIResponse{ID: req["model_id"]}
+	if err != nil {
+		resp.Success = false
+		resp.Message = out
+	} else {
+		resp.Success = true
+		resp.Message = "Conformite validee sur blockchain"
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+func approveTechnicalHandler(w http.ResponseWriter, r *http.Request) {
+	var req map[string]string
+	json.NewDecoder(r.Body).Decode(&req)
+	out, err := peerInvoke(
+		"modelgovernance", "model-governance-cc", "ApproveTechnical",
+		[]string{req["model_id"], "User3@bank.fraud-governance.com"},
+		"User3@bank.fraud-governance.com",
+	)
+	resp := APIResponse{ID: req["model_id"]}
+	if err != nil {
+		resp.Success = false
+		resp.Message = out
+	} else {
+		resp.Success = true
+		resp.Message = "Approuve techniquement sur blockchain"
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+func deployModelHandler(w http.ResponseWriter, r *http.Request) {
+	var req map[string]string
+	json.NewDecoder(r.Body).Decode(&req)
+	out, err := peerInvoke(
+		"modelgovernance", "model-governance-cc", "Deploy",
+		[]string{req["model_id"], req["admin_id"]},
+		"Admin@bank.fraud-governance.com",
+	)
+	resp := APIResponse{ID: req["model_id"]}
+	if err != nil {
+		resp.Success = false
+		resp.Message = out
+	} else {
+		resp.Success = true
+		resp.Message = "Modele deploye en production sur blockchain"
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+func revokeModelHandler(w http.ResponseWriter, r *http.Request) {
+	var req map[string]string
+	json.NewDecoder(r.Body).Decode(&req)
+	out, err := peerInvoke(
+		"modelgovernance", "model-governance-cc", "RevokeModel",
+		[]string{req["model_id"], req["reason"]},
+		"Admin@bank.fraud-governance.com",
+	)
+	resp := APIResponse{ID: req["model_id"]}
+	if err != nil {
+		resp.Success = false
+		resp.Message = out
+	} else {
+		resp.Success = true
+		resp.Message = "Modele revoque sur blockchain"
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+func getModelHandler(w http.ResponseWriter, r *http.Request) {
+	modelID := strings.TrimPrefix(r.URL.Path, "/model/")
+	peerArgs := []string{
+		"chaincode", "query",
+		"-C", "modelgovernance",
+		"-n", "model-governance-cc",
+		"-c", `{"function":"GetModel","Args":["` + modelID + `"]}`,
+	}
+	env := append(os.Environ(),
+		"FABRIC_CFG_PATH="+fabricCfg,
+		"CORE_PEER_TLS_ENABLED=true",
+		"CORE_PEER_LOCALMSPID=BankMSP",
+		"CORE_PEER_MSPCONFIGPATH="+filepath.Join(cryptoPath,
+			"peerOrganizations/bank.fraud-governance.com/users/User1@bank.fraud-governance.com/msp"),
+		"CORE_PEER_ADDRESS=peer0.bank.fraud-governance.com:7051",
+		"CORE_PEER_TLS_ROOTCERT_FILE="+filepath.Join(cryptoPath,
+			"peerOrganizations/bank.fraud-governance.com/peers/peer0.bank.fraud-governance.com/tls/ca.crt"),
+	)
+	cmd := exec.Command(peerBin, peerArgs...)
+	cmd.Env = env
+	out, err := cmd.CombinedOutput()
+	w.Header().Set("Content-Type", "application/json")
+	if err != nil {
+		json.NewEncoder(w).Encode(map[string]string{"error": string(out)})
+	} else {
+		w.Write(out)
+	}
+}
+
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
@@ -161,41 +296,14 @@ func main() {
 	http.HandleFunc("/record-decision", recordDecisionHandler)
 	http.HandleFunc("/submit-model", submitModelHandler)
 	http.HandleFunc("/record-drift", recordDriftHandler)
+	http.HandleFunc("/validate-compliance", validateComplianceHandler)
+	http.HandleFunc("/approve-technical", approveTechnicalHandler)
+	http.HandleFunc("/deploy-model", deployModelHandler)
+	http.HandleFunc("/revoke-model", revokeModelHandler)
+	http.HandleFunc("/model/", getModelHandler)
 
 	port := getEnv("PORT", "9999")
 	log.Printf("Gateway port %s | crypto=%s | cfg=%s | peer=%s",
 		port, cryptoPath, fabricCfg, peerBin)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
-}
-
-func recordDriftHandler(w http.ResponseWriter, r *http.Request) {
-	var req map[string]string
-	json.NewDecoder(r.Body).Decode(&req)
-
-	out, err := peerInvoke(
-		"modelgovernance", "model-governance-cc", "RecordDrift",
-		[]string{
-			req["model_id"],
-			req["drift_score"],
-			req["affected_features"],
-			req["severity"],
-			req["auc_degradation"],
-			req["recommendation"],
-		},
-		"User3@bank.fraud-governance.com",
-	)
-
-	resp := APIResponse{ID: req["model_id"]}
-	if err != nil {
-		resp.Success = false
-		resp.Message = out
-		log.Printf("ERREUR RecordDrift %s: %s", req["model_id"], out)
-	} else {
-		resp.Success = true
-		resp.Message = "Drift enregistré sur blockchain"
-		log.Printf("OK RecordDrift %s severity=%s", req["model_id"], req["severity"])
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
 }

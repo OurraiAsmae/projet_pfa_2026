@@ -124,7 +124,7 @@ func (c *ModelGovernanceContract) InitLedger(ctx contractapi.TransactionContextI
 		Justification: "Seuils initiaux BAM Q1-2024",
 		ApprovedByC: "SYSTEM", ApprovedByML: "SYSTEM",
 		ValidFrom:      getTxTime(ctx),
-		ReviewDeadline: time.Now().AddDate(0, 6, 0).Format(time.RFC3339),
+		ReviewDeadline: time.Now().AddDate(2, 0, 0).Format(time.RFC3339),
 		Status:         "ACTIVE",
 	}
 	data, _ := json.Marshal(threshold)
@@ -380,7 +380,7 @@ func (c *ModelGovernanceContract) UpdateThresholds(ctx contractapi.TransactionCo
 	threshold := ThresholdAsset{
 		AUCMin: aucMin, F1Min: f1Min, PrecisionMin: precisionMin, RecallMin: recallMin,
 		Justification: justification, ApprovedByC: callerID, ApprovedByML: secondSignerID,
-		ValidFrom: getTxTime(ctx), ReviewDeadline: time.Now().AddDate(0, 6, 0).Format(time.RFC3339), Status: "ACTIVE",
+		ValidFrom: getTxTime(ctx), ReviewDeadline: time.Now().AddDate(2, 0, 0).Format(time.RFC3339), Status: "ACTIVE",
 	}
 	data, _ := json.Marshal(threshold)
 	ctx.GetStub().PutState("THRESHOLD_CURRENT", data)

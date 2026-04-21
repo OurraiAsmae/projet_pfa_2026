@@ -4,7 +4,7 @@ NETWORK_DIR := $(HOME)/fraud-governance-system/blockchain/network
 CC_DIR := $(HOME)/fraud-governance-system/blockchain/chaincodes
 SCRIPTS_DIR := $(HOME)/fraud-governance-system/blockchain/scripts
 
-MGCC_SEQ := 1
+MGCC_SEQ := 2
 FDCC_SEQ := 1
 CCC_SEQ  := 1
 

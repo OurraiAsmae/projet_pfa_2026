@@ -98,6 +98,9 @@ services:
     volumes:
       - /home/asmae/fraud-governance-system/mlops:/app/mlops
       - /home/asmae/fraud-governance-system/redis:/app/redis_lib
+      - /home/asmae/fraud-governance-system/blockchain/network/crypto-material:/home/asmae/fraud-governance-system/blockchain/network/crypto-material:ro
+      - /home/asmae/fraud-governance-system/blockchain/network:/home/asmae/fraud-governance-system/blockchain/network:ro
+      - /home/asmae/fraud-governance-system/fabric-samples/bin/peer:/usr/local/bin/peer:ro
     environment:
       - REDIS_HOST=redis
       - GATEWAY_URL=http://host.gateway.internal:9999
@@ -113,7 +116,9 @@ services:
       - "8501:8501"
     environment:
       - API_URL=http://api:8000
-    depends_on: [api]
+      - GATEWAY_URL=http://gateway:9999
+      - MLFLOW_URL=http://mlflow:5000
+    depends_on: [api, gateway, mlflow]
     networks: [fraud-net]
 
   governance-processor:

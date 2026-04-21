@@ -1,8 +1,9 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
 from typing import Optional
 import httpx, random, sys, os, pickle, numpy as np, warnings
+import hashlib, shutil, tempfile, json
 warnings.filterwarnings("ignore")
 
 sys.path.insert(0, "/app/redis_lib")
@@ -17,11 +18,10 @@ except Exception as e:
     redis_client = None
     REDIS_OK = False
 
-MODEL_PATH = "/app/mlops/models/random_forest.pkl"
-SCALER_PATH = "/app/mlops/models/scaler.pkl"
+MODELS_DIR = "/app/mlops/models"
 GATEWAY_URL = os.getenv("GATEWAY_URL", "http://localhost:9999")
 
-# 17 features exactes dans le bon ordre
+# 17 features exactes
 FEATURE_NAMES = [
     "heure", "jour_semaine", "est_weekend", "montant_mad",
     "type_transaction", "pays_transaction", "est_etranger",
@@ -30,24 +30,54 @@ FEATURE_NAMES = [
     "age_client", "segment_revenu", "type_carte"
 ]
 
+# State global — modele actif peut changer apres deploy
 state = {
     "model": None, "scaler": None,
-    "ml_ok": False, "shap_service": None, "shap_ok": False
+    "ml_ok": False, "shap_service": None, "shap_ok": False,
+    "active_model_id": "RF-v1.0",
+    "active_model_path": f"{MODELS_DIR}/random_forest.pkl",
+    "active_model_type": "RandomForestClassifier"
 }
+
+def load_model(model_path: str, scaler_path: str = None):
+    """Charge un modele et son scaler depuis le disque"""
+    with open(model_path, "rb") as f:
+        model = pickle.load(f)
+    scaler = None
+    sp = scaler_path or f"{MODELS_DIR}/scaler.pkl"
+    try:
+        with open(sp, "rb") as f:
+            scaler = pickle.load(f)
+    except:
+        pass
+    return model, scaler
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("🚀 Démarrage API v3.0...")
+    print("🚀 Démarrage API v4.0...")
+
+    # Vérifier si un modèle actif est défini dans Redis
+    active_path = None
+    if redis_client:
+        active_info = redis_client.client.get("model:active")
+        if active_info:
+            info = json.loads(active_info)
+            active_path = info.get("model_path")
+            state["active_model_id"] = info.get("model_id", "RF-v1.0")
+            state["active_model_type"] = info.get("model_type", "RandomForestClassifier")
+            print(f"📦 Modèle actif trouvé dans Redis: {state['active_model_id']}")
+
+    # Charger le modèle actif (ou RF par défaut)
+    model_path = active_path or f"{MODELS_DIR}/random_forest.pkl"
     try:
-        with open(MODEL_PATH, "rb") as f:
-            state["model"] = pickle.load(f)
-        with open(SCALER_PATH, "rb") as f:
-            state["scaler"] = pickle.load(f)
+        state["model"], state["scaler"] = load_model(model_path)
         state["ml_ok"] = True
-        print(f"✅ RF chargé — {state['model'].n_features_in_} features")
+        state["active_model_path"] = model_path
+        print(f"✅ Modèle chargé: {state['active_model_id']} — {state['model'].n_features_in_} features")
     except Exception as e:
         print(f"⚠️ ML: {e}")
 
+    # SHAP
     try:
         from shap_service import SHAPService
         state["shap_service"] = SHAPService()
@@ -57,7 +87,7 @@ async def lifespan(app: FastAPI):
         print(f"⚠️ SHAP: {e}")
     yield
 
-app = FastAPI(title="Fraud Governance API", version="3.0.0", lifespan=lifespan)
+app = FastAPI(title="Fraud Governance API", version="4.0.0", lifespan=lifespan)
 
 class Transaction(BaseModel):
     tx_id: str
@@ -94,6 +124,7 @@ class DecisionResponse(BaseModel):
     top_features: list = []
     rate_limit_info: dict = {}
     velocity_info: dict = {}
+    active_model: str = "RF-v1.0"
 
 @app.get("/health")
 def health():
@@ -103,7 +134,8 @@ def health():
         "redis": REDIS_OK,
         "ml_model": state["ml_ok"],
         "shap": state["shap_ok"],
-        "version": "3.0.0"
+        "version": "4.0.0",
+        "active_model": state["active_model_id"]
     }
 
 @app.get("/model/info")
@@ -117,8 +149,96 @@ def model_info():
         "feature_names": FEATURE_NAMES,
         "classes": state["model"].classes_.tolist(),
         "ml_ok": state["ml_ok"],
-        "shap_ok": state["shap_ok"]
+        "shap_ok": state["shap_ok"],
+        "active_model_id": state["active_model_id"],
+        "active_model_path": state["active_model_path"]
     }
+
+@app.get("/model/active")
+def get_active_model():
+    """Retourne le modèle actuellement actif en production"""
+    if redis_client:
+        info = redis_client.client.get("model:active")
+        if info:
+            return json.loads(info)
+    return {
+        "model_id": state["active_model_id"],
+        "model_type": state["active_model_type"],
+        "model_path": state["active_model_path"],
+        "status": "DEPLOYED"
+    }
+
+@app.post("/model/deploy/{model_id}")
+async def deploy_model(model_id: str, model_path: str = None):
+    """
+    Change le modèle actif en production.
+    Appelé depuis le Dashboard après Deploy() sur blockchain.
+    """
+    # Chercher le fichier du modèle
+    path = model_path
+    if not path:
+        # Chercher par nom dans mlops/models/
+        import glob
+        candidates = glob.glob(f"{MODELS_DIR}/*.pkl")
+        for c in candidates:
+            if "scaler" not in c and "random_forest" in c.lower():
+                path = c
+                break
+        if not path:
+            path = f"{MODELS_DIR}/random_forest.pkl"
+
+    try:
+        new_model, new_scaler = load_model(path)
+
+        # Mettre à jour le state en mémoire
+        state["model"] = new_model
+        state["scaler"] = new_scaler
+        state["active_model_id"] = model_id
+        state["active_model_path"] = path
+        state["active_model_type"] = type(new_model).__name__
+        state["ml_ok"] = True
+
+        # Mettre à jour SHAP avec le nouveau modèle
+        if state["shap_service"]:
+            from shap_service import SHAPService
+            state["shap_service"] = SHAPService()
+
+        # Persister dans Redis pour survie aux restarts
+        if redis_client:
+            redis_client.client.set("model:active", json.dumps({
+                "model_id": model_id,
+                "model_type": type(new_model).__name__,
+                "model_path": path,
+                "deployed_at": __import__('datetime').datetime.utcnow().isoformat(),
+                "status": "DEPLOYED"
+            }))
+
+        print(f"✅ Modèle actif changé vers: {model_id}")
+        return {
+            "success": True,
+            "message": f"Modèle {model_id} maintenant actif en production",
+            "model_type": type(new_model).__name__,
+            "n_features": new_model.n_features_in_
+        }
+    except Exception as e:
+        raise HTTPException(500, f"Erreur chargement modèle: {e}")
+
+@app.get("/models/available")
+def list_available_models():
+    """Liste tous les modèles .pkl disponibles dans mlops/models/"""
+    import glob
+    models = []
+    for path in glob.glob(f"{MODELS_DIR}/*.pkl"):
+        if "scaler" not in path:
+            name = os.path.basename(path).replace(".pkl", "")
+            is_active = path == state["active_model_path"]
+            models.append({
+                "name": name,
+                "path": path,
+                "size_mb": round(os.path.getsize(path) / 1024 / 1024, 2),
+                "is_active": is_active
+            })
+    return {"models": models, "active_model": state["active_model_id"]}
 
 @app.post("/predict", response_model=DecisionResponse)
 async def predict(tx: Transaction):
@@ -138,17 +258,15 @@ async def predict(tx: Transaction):
         if rate_info["exceeded"] or velocity_info["suspicious"]:
             force_ambigu = True
 
-    # Construire features dict
+    # Features
     features_dict = tx.features or {}
-    # Remplir depuis les champs directs de la transaction
     for fname in FEATURE_NAMES:
         if fname not in features_dict:
             features_dict[fname] = getattr(tx, fname, 0.0)
 
-    # Prédiction ML
+    # Prédiction avec modèle ACTIF
     score = round(random.uniform(0.1, 0.99), 4)
     ml_used = False
-
     if state["model"] and state["scaler"]:
         try:
             X = np.array([[float(features_dict.get(f, 0)) for f in FEATURE_NAMES]])
@@ -184,7 +302,8 @@ async def predict(tx: Transaction):
     if redis_client:
         redis_client.push_to_outbox("RECORD_DECISION", {
             "tx_id": tx.tx_id, "zone": zone,
-            "shap_hash": shap_cid, "model_id": "RF-v1.0",
+            "shap_hash": shap_cid,
+            "model_id": state["active_model_id"],
             "card_id": tx.card_id, "client_id": tx.client_id,
             "score": score, "amount": tx.montant_mad
         })
@@ -195,7 +314,8 @@ async def predict(tx: Transaction):
             "success": True, "blockchain_recorded": blockchain_ok,
             "ml_model_used": ml_used, "shap_cid": shap_cid,
             "top_features": top_features,
-            "rate_limit_info": rate_info, "velocity_info": velocity_info
+            "rate_limit_info": rate_info, "velocity_info": velocity_info,
+            "active_model": state["active_model_id"]
         }
         redis_client.mark_as_processed(tx.tx_id, result)
         redis_client.cache_decision(tx.tx_id, result)
@@ -204,7 +324,8 @@ async def predict(tx: Transaction):
             async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.post(f"{GATEWAY_URL}/record-decision", json={
                     "tx_id": tx.tx_id, "zone": zone, "shap_hash": shap_cid,
-                    "model_id": "RF-v1.0", "card_id": tx.card_id,
+                    "model_id": state["active_model_id"],
+                    "card_id": tx.card_id,
                     "client_id": tx.client_id, "score": score
                 })
                 blockchain_ok = resp.json().get("success", False)
@@ -216,8 +337,52 @@ async def predict(tx: Transaction):
         success=True, blockchain_recorded=blockchain_ok,
         from_cache=False, ml_model_used=ml_used,
         shap_cid=shap_cid, top_features=top_features,
-        rate_limit_info=rate_info, velocity_info=velocity_info
+        rate_limit_info=rate_info, velocity_info=velocity_info,
+        active_model=state["active_model_id"]
     )
+
+@app.post("/mlops/upload-dataset")
+async def upload_dataset(
+    file: UploadFile = File(...),
+    dataset_name: str = Form(...)
+):
+    with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tmp:
+        content = await file.read()
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    sha256 = hashlib.sha256(content).hexdigest()
+    data_hash = f"sha256:{sha256}"
+
+    import pandas as pd
+    df = pd.read_csv(tmp_path)
+    fraud_rate = float(df["fraude"].mean()) if "fraude" in df.columns else None
+
+    dest = f"/app/mlops/datasets/{dataset_name}_{sha256[:8]}.csv"
+    shutil.copy(tmp_path, dest)
+    os.unlink(tmp_path)
+
+    if redis_client:
+        redis_client.client.setex(
+            f"dataset:{dataset_name}", 86400 * 7,
+            json.dumps({
+                "dataset_name": dataset_name,
+                "data_hash_dvc": data_hash,
+                "n_rows": len(df),
+                "n_cols": len(df.columns),
+                "fraud_rate": fraud_rate,
+                "file_path": dest
+            })
+        )
+
+    return {
+        "success": True,
+        "dataset_name": dataset_name,
+        "data_hash_dvc": data_hash,
+        "n_rows": len(df),
+        "n_cols": len(df.columns),
+        "fraud_rate": fraud_rate
+    }
 
 @app.get("/shap/{tx_id}")
 def get_shap(tx_id: str):
@@ -252,29 +417,227 @@ def get_decision(tx_id: str):
 
 @app.get("/drift/latest")
 def get_drift_latest():
-    """Récupère le dernier rapport drift depuis Redis"""
     if not redis_client:
         raise HTTPException(503, "Redis non disponible")
     data = redis_client.client.get("drift:latest")
     if not data:
         return {"status": "no_data", "message": "Aucun rapport drift disponible"}
-    import json as j
-    return j.loads(data)
+    return json.loads(data)
 
 @app.get("/drift/history")
 def get_drift_history():
-    """Historique des rapports drift"""
     if not redis_client:
         raise HTTPException(503, "Redis non disponible")
     history = redis_client.client.lrange("drift:history", 0, 19)
-    import json as j
-    return {"history": [j.loads(h) for h in history]}
+    return {"history": [json.loads(h) for h in history]}
 
 @app.get("/drift/alerts")
 def get_drift_alerts():
-    """Alertes drift actives"""
     if not redis_client:
         raise HTTPException(503, "Redis non disponible")
     alerts = redis_client.client.lrange("alerts:drift", 0, 9)
-    import json as j
-    return {"alerts": [j.loads(a) for a in alerts]}
+    return {"alerts": [json.loads(a) for a in alerts]}
+
+@app.get("/models/submitted")
+def get_submitted_models():
+    """Retourne les modèles soumis depuis Redis (uploadés via dashboard)"""
+    if not redis_client:
+        return {"models": []}
+    
+    # Chercher tous les modèles dans Redis
+    keys = redis_client.client.keys("model:submitted:*")
+    models = []
+    for key in keys:
+        data = redis_client.client.get(key)
+        if data:
+            models.append(json.loads(data))
+    
+    # Aussi chercher les modèles disponibles sur disque
+    import glob
+    for path in glob.glob(f"{MODELS_DIR}/*.pkl"):
+        if "scaler" not in path:
+            name = os.path.basename(path).replace(".pkl", "")
+            is_active = path == state["active_model_path"]
+            # Vérifier si déjà dans la liste
+            if not any(m.get("name") == name for m in models):
+                models.append({
+                    "name": name,
+                    "model_id": f"{name}-v1.0",
+                    "path": path,
+                    "size_mb": round(os.path.getsize(path)/1024/1024, 2),
+                    "is_active": is_active,
+                    "status": "DEPLOYED" if is_active else "AVAILABLE",
+                    "model_type": "Unknown"
+                })
+    
+    return {"models": models, "active_model": state["active_model_id"]}
+
+@app.get("/datasets/available")
+def get_available_datasets():
+    """Liste tous les datasets disponibles"""
+    datasets = []
+    
+    # Depuis Redis
+    if redis_client:
+        keys = redis_client.client.keys("dataset:*")
+        for key in keys:
+            data = redis_client.client.get(key)
+            if data:
+                datasets.append(json.loads(data))
+    
+    # Depuis le disque
+    import glob
+    for path in glob.glob("/app/mlops/datasets/*.csv"):
+        name = os.path.basename(path)
+        # Vérifier si déjà dans la liste
+        if not any(d.get("file_path") == path or 
+                   d.get("dataset_name","") in name for d in datasets):
+            try:
+                import pandas as pd
+                df = pd.read_csv(path, nrows=5)
+                sha256 = hashlib.sha256(open(path,"rb").read()).hexdigest()
+                datasets.append({
+                    "dataset_name": name,
+                    "file_path": path,
+                    "data_hash_dvc": f"sha256:{sha256}",
+                    "n_cols": len(df.columns),
+                    "size_mb": round(os.path.getsize(path)/1024/1024, 2)
+                })
+            except:
+                pass
+    
+    return {"datasets": datasets}
+
+# Override /models/submitted avec vrais types
+@app.get("/models/info")
+def get_models_info():
+    """Retourne les modèles avec leur vrai type chargé depuis le pkl"""
+    import glob
+    models = []
+    for path in glob.glob(f"{MODELS_DIR}/*.pkl"):
+        if "scaler" not in path:
+            name = os.path.basename(path).replace(".pkl","")
+            is_active = path == state["active_model_path"]
+            try:
+                with open(path,"rb") as f:
+                    m = pickle.load(f)
+                model_type = type(m).__name__
+                n_features = getattr(m,"n_features_in_","N/A")
+                n_estimators = getattr(m,"n_estimators","N/A")
+            except Exception as e:
+                model_type = f"Error: {e}"
+                n_features = "N/A"
+                n_estimators = "N/A"
+            models.append({
+                "name": name,
+                "model_id": f"{name}-v1.0",
+                "path": path,
+                "size_mb": round(os.path.getsize(path)/1024/1024,2),
+                "is_active": is_active,
+                "status": "DEPLOYED" if is_active else "AVAILABLE",
+                "model_type": model_type,
+                "n_features": n_features,
+                "n_estimators": n_estimators
+            })
+    return {"models": models, "active_model": state["active_model_id"]}
+
+import subprocess
+
+def peer_invoke_local(function: str, args: list, msp_user: str = "Admin@bank.fraud-governance.com") -> dict:
+    """Appelle le peer chaincode invoke depuis l'API"""
+    crypto_path = "/home/asmae/fraud-governance-system/blockchain/network/crypto-material"
+    fabric_cfg = "/home/asmae/fraud-governance-system/blockchain/network"
+    peer_bin = "/usr/local/bin/peer"
+    
+    args_json = json.dumps({"function": function, "Args": args})
+    
+    cmd = [peer_bin, "chaincode", "invoke",
+        "-o", "orderer.fraud-governance.com:7050",
+        "-C", "modelgovernance",
+        "-n", "model-governance-cc",
+        "--tls",
+        "--cafile", f"{crypto_path}/ordererOrganizations/fraud-governance.com/orderers/orderer.fraud-governance.com/tls/ca.crt",
+        "--peerAddresses", "peer0.bank.fraud-governance.com:7051",
+        "--tlsRootCertFiles", f"{crypto_path}/peerOrganizations/bank.fraud-governance.com/peers/peer0.bank.fraud-governance.com/tls/ca.crt",
+        "-c", args_json
+    ]
+    
+    env = {
+        "FABRIC_CFG_PATH": fabric_cfg,
+        "CORE_PEER_TLS_ENABLED": "true",
+        "CORE_PEER_LOCALMSPID": "BankMSP",
+        "CORE_PEER_MSPCONFIGPATH": f"{crypto_path}/peerOrganizations/bank.fraud-governance.com/users/{msp_user}/msp",
+        "CORE_PEER_ADDRESS": "peer0.bank.fraud-governance.com:7051",
+        "CORE_PEER_TLS_ROOTCERT_FILE": f"{crypto_path}/peerOrganizations/bank.fraud-governance.com/peers/peer0.bank.fraud-governance.com/tls/ca.crt",
+        "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    }
+    
+    result = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=30)
+    success = result.returncode == 0
+    return {"success": success, "output": result.stdout + result.stderr}
+
+@app.post("/governance/validate-compliance/{model_id}")
+async def api_validate_compliance(model_id: str):
+    """Validate compliance via peer depuis l'API"""
+    result = peer_invoke_local(
+        "ValidateCompliance",
+        [model_id, "User2@bank.fraud-governance.com"],
+        "User2@bank.fraud-governance.com"
+    )
+    return result
+
+@app.post("/governance/approve-technical/{model_id}")
+async def api_approve_technical(model_id: str):
+    """Approve technical via peer depuis l'API"""
+    result = peer_invoke_local(
+        "ApproveTechnical",
+        [model_id, "User3@bank.fraud-governance.com"],
+        "User3@bank.fraud-governance.com"
+    )
+    return result
+
+@app.post("/governance/deploy/{model_id}")
+async def api_deploy_model(model_id: str):
+    """Deploy model via peer depuis l'API"""
+    result = peer_invoke_local(
+        "Deploy",
+        [model_id, "Admin@bank.fraud-governance.com"],
+        "Admin@bank.fraud-governance.com"
+    )
+    return result
+
+@app.post("/governance/revoke/{model_id}")
+async def api_revoke_model(model_id: str, reason: str = "Revoked"):
+    """Revoke model via peer depuis l'API"""
+    result = peer_invoke_local(
+        "RevokeModel",
+        [model_id, reason],
+        "Admin@bank.fraud-governance.com"
+    )
+    return result
+
+@app.get("/governance/model/{model_id}")
+async def api_get_model(model_id: str):
+    """Get model status depuis blockchain"""
+    crypto_path = "/home/asmae/fraud-governance-system/blockchain/network/crypto-material"
+    fabric_cfg = "/home/asmae/fraud-governance-system/blockchain/network"
+    peer_bin = "/usr/local/bin/peer"
+    
+    args_json = json.dumps({"function": "GetModel", "Args": [model_id]})
+    cmd = [peer_bin, "chaincode", "query",
+        "-C", "modelgovernance", "-n", "model-governance-cc",
+        "-c", args_json
+    ]
+    env = {
+        "FABRIC_CFG_PATH": fabric_cfg,
+        "CORE_PEER_TLS_ENABLED": "true",
+        "CORE_PEER_LOCALMSPID": "BankMSP",
+        "CORE_PEER_MSPCONFIGPATH": f"{crypto_path}/peerOrganizations/bank.fraud-governance.com/users/Admin@bank.fraud-governance.com/msp",
+        "CORE_PEER_ADDRESS": "peer0.bank.fraud-governance.com:7051",
+        "CORE_PEER_TLS_ROOTCERT_FILE": f"{crypto_path}/peerOrganizations/bank.fraud-governance.com/peers/peer0.bank.fraud-governance.com/tls/ca.crt",
+        "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    }
+    result = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=15)
+    if result.returncode == 0:
+        return json.loads(result.stdout)
+    return {"error": result.stderr}

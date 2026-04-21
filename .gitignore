@@ -1,0 +1,15 @@
+
+# ML Models (trop gros pour git)
+mlops/models/*.pkl
+mlops/datasets/*.csv
+mlops/reports/
+mlops/shap/
+auth/
+
+# Logs
+*.log
+/tmp/
+
+# Docker volumes
+redis_data/
+mlflow_data/
