@@ -118,6 +118,7 @@ services:
       - API_URL=http://api:8000
       - GATEWAY_URL=http://gateway:9999
       - MLFLOW_URL=http://mlflow:5000
+      - AUTH_URL=http://auth-service:8001
     depends_on: [api, gateway, mlflow]
     networks: [fraud-net]
 
@@ -148,6 +149,12 @@ services:
       - FABRIC_CFG_PATH=/fabric-config
       - PEER_BIN=/fabric-bin/peer
       - PORT=9999
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      - "peer0.bank.fraud-governance.com:host-gateway"
+      - "peer0.audit.fraud-governance.com:host-gateway"
+      - "peer0.regulator.fraud-governance.com:host-gateway"
+      - "orderer.fraud-governance.com:host-gateway"
     networks: [fraud-net]
   drift-monitor:
     build: ./drift
@@ -162,4 +169,20 @@ services:
       - CRITICAL_THRESHOLD=0.30
       - CHECK_INTERVAL=60
     depends_on: [redis, gateway, api]
+    networks: [fraud-net]
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "8001:8001"
+    environment:
+      - MYSQL_HOST=172.29.112.1
+      - MYSQL_PORT=3306
+      - MYSQL_USER=blockmlgov
+      - MYSQL_PASSWORD=BlockML@2026!
+      - MYSQL_DB=blockmlgov_auth
+      - JWT_SECRET=blockmlgov-jwt-secret-2026-production!
+      - ACCESS_TOKEN_EXPIRE_MINUTES=60
+      - REFRESH_TOKEN_EXPIRE_DAYS=7
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks: [fraud-net]

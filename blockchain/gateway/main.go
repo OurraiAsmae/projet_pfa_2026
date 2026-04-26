@@ -126,7 +126,7 @@ func submitModelHandler(w http.ResponseWriter, r *http.Request) {
 		[]string{req["model_id"], req["version"], req["data_hash"],
 			req["mlflow_run_id"], req["model_card_cid"],
 			req["auc"], req["f1"], req["precision"], req["recall"]},
-		"User1@bank.fraud-governance.com",
+		"Admin@bank.fraud-governance.com",
 	)
 
 	resp := APIResponse{ID: req["model_id"]}
@@ -291,6 +291,36 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+
+func submitDatasetHandler(w http.ResponseWriter, r *http.Request) {
+	var req map[string]string
+	json.NewDecoder(r.Body).Decode(&req)
+	out, err := peerInvoke(
+		"modelgovernance", "model-governance-cc", "RegisterDataset",
+		[]string{
+			req["dataset_id"], req["hash"], req["cid"],
+			req["version"], req["n_rows"], req["fraud_rate"],
+			req["quality_score"], req["uploaded_by"],
+		},
+		"User1@bank.fraud-governance.com",
+	)
+	resp := APIResponse{ID: req["dataset_id"]}
+	if err != nil {
+		if strings.Contains(out, "existe deja") {
+			resp.Success = true
+			resp.Message = "Dataset already registered"
+		} else {
+			resp.Success = false
+			resp.Message = out
+		}
+	} else {
+		resp.Success = true
+		resp.Message = "Dataset registered on blockchain"
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
 func main() {
 	http.HandleFunc("/health", healthHandler)
 	http.HandleFunc("/record-decision", recordDecisionHandler)
@@ -301,6 +331,7 @@ func main() {
 	http.HandleFunc("/deploy-model", deployModelHandler)
 	http.HandleFunc("/revoke-model", revokeModelHandler)
 	http.HandleFunc("/model/", getModelHandler)
+	http.HandleFunc("/submit-dataset", submitDatasetHandler)
 
 	port := getEnv("PORT", "9999")
 	log.Printf("Gateway port %s | crypto=%s | cfg=%s | peer=%s",

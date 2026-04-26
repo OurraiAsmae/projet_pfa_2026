@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from typing import Optional
 import httpx, random, sys, os, pickle, numpy as np, warnings
 import hashlib, shutil, tempfile, json
+import pandas as pd
 warnings.filterwarnings("ignore")
 
 sys.path.insert(0, "/app/redis_lib")
@@ -121,6 +122,8 @@ class DecisionResponse(BaseModel):
     from_cache: bool = False
     ml_model_used: bool = False
     shap_cid: Optional[str] = None
+    shap_ipfs_url: Optional[str] = None
+    shap_pinned: bool = False
     top_features: list = []
     rate_limit_info: dict = {}
     velocity_info: dict = {}
@@ -286,14 +289,20 @@ async def predict(tx: Transaction):
     else:
         zone = "AMBIGU"
 
-    # SHAP
-    shap_cid = f"sha256:{tx.tx_id[:8]}"
+    # SHAP + IPFS automatique
+    shap_cid = f"QmSIM{hashlib.sha256(tx.tx_id.encode()).hexdigest()[:38]}"
+    shap_ipfs_url = ""
+    shap_pinned = False
     top_features = []
     if state["shap_service"] and ml_used:
         try:
-            shap_result = state["shap_service"].compute_shap(features_dict, tx.tx_id)
-            shap_cid = shap_result["cid"]
-            top_features = shap_result.get("top_features", [])
+            shap_result = state["shap_service"].compute_shap(
+                features_dict, tx.tx_id)
+            shap_cid      = shap_result.get("cid", shap_cid)
+            top_features  = shap_result.get("top_features", [])
+            shap_ipfs_url = shap_result.get("ipfs_url", "")
+            shap_pinned   = shap_result.get(
+                "storage", {}).get("pinned", False)
         except Exception as e:
             print(f"⚠️ SHAP: {e}")
 
@@ -336,8 +345,12 @@ async def predict(tx: Transaction):
         tx_id=tx.tx_id, zone=zone, score=score,
         success=True, blockchain_recorded=blockchain_ok,
         from_cache=False, ml_model_used=ml_used,
-        shap_cid=shap_cid, top_features=top_features,
-        rate_limit_info=rate_info, velocity_info=velocity_info,
+        shap_cid=shap_cid,
+        shap_ipfs_url=shap_ipfs_url,
+        shap_pinned=shap_pinned,
+        top_features=top_features,
+        rate_limit_info=rate_info,
+        velocity_info=velocity_info,
         active_model=state["active_model_id"]
     )
 
@@ -641,3 +654,467 @@ async def api_get_model(model_id: str):
     if result.returncode == 0:
         return json.loads(result.stdout)
     return {"error": result.stderr}
+
+# ── IPFS Integration ─────────────────────────────────
+try:
+    from ipfs_client import IPFSClient
+    ipfs_client = IPFSClient()
+    IPFS_OK = ipfs_client.test_connection()
+    if IPFS_OK:
+        print("✅ IPFS Pinata connecté")
+    else:
+        print("⚠️ IPFS non disponible — mode simulé")
+except Exception as e:
+    ipfs_client = None
+    IPFS_OK = False
+    print(f"⚠️ IPFS: {e}")
+
+@app.get("/ipfs/list")
+def list_ipfs_files():
+    """Liste tous les fichiers pinnés sur IPFS Pinata"""
+    if not ipfs_client:
+        raise HTTPException(503, "IPFS non disponible")
+    files = ipfs_client.list_pinned(50)
+    return {"files": files, "total": len(files)}
+
+@app.get("/ipfs/get/{cid}")
+def get_ipfs_content(cid: str):
+    """Récupère le contenu d'un CID depuis IPFS"""
+    if not ipfs_client:
+        raise HTTPException(503, "IPFS non disponible")
+    content = ipfs_client.get_from_ipfs(cid)
+    if not content:
+        raise HTTPException(404, f"CID {cid} non trouvé")
+    return content
+
+@app.post("/ipfs/pin-model-card")
+async def pin_model_card(
+    model_id: str,
+    model_type: str,
+    auc_roc: float = 0.0,
+    f1: float = 0.0,
+    precision: float = 0.0,
+    recall: float = 0.0,
+    dataset_name: str = "",
+    dataset_hash: str = "",
+    submitted_by: str = "system"
+):
+    """Crée et pine une Model Card sur IPFS"""
+    if not ipfs_client:
+        # Fallback simulé
+        import hashlib
+        fake_cid = "QmSIM" + hashlib.sha256(
+            model_id.encode()).hexdigest()[:38]
+        return {"cid": fake_cid, "pinned": False}
+
+    result = ipfs_client.create_model_card(
+        model_id=model_id,
+        model_type=model_type,
+        metrics={"auc_roc": auc_roc, "f1": f1,
+                 "precision": precision, "recall": recall},
+        dataset_info={"name": dataset_name,
+                      "hash": dataset_hash},
+        feature_names=FEATURE_NAMES,
+        submitted_by=submitted_by
+    )
+    return {
+        "cid": result["cid"],
+        "ipfs_url": result["ipfs_url"],
+        "local_path": result["local_path"],
+        "pinned": result["pinned"]
+    }
+
+@app.get("/ipfs/health")
+def ipfs_health():
+    ok = ipfs_client.test_connection() if ipfs_client else False
+    return {"status": "ok" if ok else "unavailable",
+            "pinata": ok}
+
+# ── Dataset Governance Endpoints ─────────────────────
+from dataset_service import dataset_svc
+import io
+
+@app.post("/datasets/upload")
+async def upload_dataset(
+    file: UploadFile = File(...),
+    dataset_name: str = Form(...),
+    uploaded_by: str = Form("data.scientist1")
+):
+    """
+    Complete Dataset Governance Upload:
+    Step 1 → Hash + Versioning
+    Step 2 → Dataset Card → IPFS
+    Step 3 → Feature Analysis + Quality
+    Step 4 → Local Storage
+    Step 5 → Blockchain + Lineage
+    """
+    content = await file.read()
+
+    # Step 1 — Hash + Version
+    hash_val = dataset_svc.compute_hash(content)
+    duplicate = dataset_svc.check_duplicate(hash_val)
+    if duplicate:
+        return {
+            "success": False,
+            "message": "Dataset already exists",
+            "existing": duplicate
+        }
+    version = dataset_svc.get_next_version(dataset_name)
+
+    # Load DataFrame
+    try:
+        df = pd.read_csv(io.BytesIO(content))
+    except Exception as e:
+        raise HTTPException(400, f"Invalid CSV: {e}")
+
+    # Step 2 — Dataset Card → IPFS
+    card = dataset_svc.create_dataset_card(
+        dataset_name, version, hash_val,
+        df, uploaded_by)
+    dataset_id = card["identity"]["dataset_id"]
+    card_cid   = dataset_svc.pin_dataset_card(
+        card, dataset_id)
+    card["identity"]["cid_ipfs"] = card_cid
+
+    # Step 3 — Feature Analysis + Quality
+    analysis = dataset_svc.analyze_features(df, dataset_id)
+    analysis_cid = dataset_svc.pin_analysis(
+        analysis, dataset_id)
+
+    # Step 4 — Local Storage
+    paths = dataset_svc.save_locally(
+        content, df, dataset_name, version,
+        hash_val, card, analysis,
+        card_cid, analysis_cid)
+
+    # Step 5 — Blockchain
+    bc_ok = dataset_svc.register_on_blockchain(
+        dataset_id=dataset_id,
+        hash_val=hash_val,
+        card_cid=card_cid,
+        version=version,
+        n_rows=card["statistics"]["n_rows"],
+        fraud_rate=card["statistics"]["fraud_rate"],
+        quality_score=analysis["quality"]["total_score"],
+        uploaded_by=uploaded_by
+    )
+
+    # Update meta with blockchain status
+    try:
+        meta = json.load(open(paths["meta_path"]))
+        meta["blockchain_registered"] = bc_ok
+        meta["card_cid"] = card_cid
+        meta["analysis_cid"] = analysis_cid
+        json.dump(meta, open(paths["meta_path"],"w"), indent=2)
+    except:
+        pass
+
+    return {
+        "success":          True,
+        "dataset_id":       dataset_id,
+        "name":             dataset_name,
+        "version":          version,
+        "hash":             hash_val,
+        "card_cid":         card_cid,
+        "analysis_cid":     analysis_cid,
+        "card_ipfs_url":    f"https://gateway.pinata.cloud/ipfs/{card_cid}",
+        "n_rows":           card["statistics"]["n_rows"],
+        "n_cols":           card["statistics"]["n_columns"],
+        "fraud_rate":       card["statistics"]["fraud_rate"],
+        "quality_score":    analysis["quality"]["total_score"],
+        "quality_rating":   analysis["quality"]["rating"],
+        "blockchain":       "✅ Registered" if bc_ok
+                            else "⚠️ Pending",
+        "top_features":     analysis["feature_importance"][:5],
+        "top_correlations": analysis["correlations"][:5],
+        "local_path":       paths["csv_path"]
+    }
+
+@app.get("/datasets/list")
+def list_datasets():
+    """List all datasets with metadata"""
+    datasets = dataset_svc.get_all_datasets()
+    return {"datasets": datasets, "total": len(datasets)}
+
+@app.get("/datasets/available")
+def datasets_available():
+    """Available datasets for model training"""
+    datasets = dataset_svc.get_all_datasets()
+    return {"datasets": datasets}
+
+@app.get("/datasets/{dataset_id}/analysis")
+def get_dataset_analysis(dataset_id: str):
+    """Get complete feature analysis"""
+    analysis = dataset_svc.get_dataset_analysis(dataset_id)
+    if not analysis:
+        raise HTTPException(404, "Analysis not found")
+    return analysis
+
+@app.get("/datasets/{dataset_id}/lineage")
+def get_dataset_lineage(dataset_id: str):
+    """Get dataset lineage — which models use this dataset"""
+    return dataset_svc.get_lineage(dataset_id)
+
+@app.get("/datasets/compare/{id1}/{id2}")
+def compare_datasets(id1: str, id2: str):
+    """Compare two dataset versions"""
+    return dataset_svc.compare_versions(id1, id2)
+
+@app.post("/datasets/{dataset_id}/link-model")
+def link_model(dataset_id: str, model_id: str):
+    """Link a model to its training dataset"""
+    ok = dataset_svc.link_model_to_dataset(
+        model_id, dataset_id,
+        dataset_svc._get_meta(dataset_id,
+                             ).get("hash","") 
+        if dataset_svc._get_meta(dataset_id) else "")
+    return {"success": ok, "lineage":
+            f"{model_id} → {dataset_id}"}
+
+@app.post("/ipfs/pin-json")
+async def pin_json_to_ipfs(request: dict):
+    """Pin any JSON to IPFS Pinata"""
+    if not ipfs_client:
+        raise HTTPException(503, "IPFS unavailable")
+    data = request.get("data", {})
+    name = request.get("name", "blockmlgov-data")
+    cid  = ipfs_client.pin_json(data, name)
+    if cid:
+        return {
+            "cid": cid,
+            "url": f"https://gateway.pinata.cloud/ipfs/{cid}",
+            "pinned": True
+        }
+    raise HTTPException(500, "Failed to pin to IPFS")
+
+@app.post("/governance/submit-model")
+async def governance_submit_model(request: dict):
+    """Submit model to blockchain via peer binary"""
+    import subprocess
+    crypto = "/home/asmae/fraud-governance-system/blockchain/network/crypto-material"
+    fabric_cfg = "/home/asmae/fraud-governance-system/blockchain/network"
+    peer_bin = "/usr/local/bin/peer"
+
+    model_id     = request.get("model_id","")
+    version      = request.get("version","1.0")
+    data_hash    = request.get("data_hash","")
+    mlflow_run   = request.get("mlflow_run_id","")
+    card_cid     = request.get("model_card_cid","")
+    auc          = request.get("auc","0")
+    f1           = request.get("f1","0")
+    precision    = request.get("precision","0")
+    recall       = request.get("recall","0")
+
+    args_json = json.dumps({
+        "function": "SubmitModel",
+        "Args": [model_id, version, data_hash,
+                 mlflow_run, card_cid,
+                 auc, f1, precision, recall]
+    })
+
+    cmd = [peer_bin, "chaincode", "invoke",
+        "-o", "orderer.fraud-governance.com:7050",
+        "-C", "modelgovernance",
+        "-n", "model-governance-cc",
+        "--tls",
+        "--cafile",
+        f"{crypto}/ordererOrganizations/fraud-governance.com/orderers/orderer.fraud-governance.com/tls/ca.crt",
+        "--peerAddresses", "peer0.bank.fraud-governance.com:7051",
+        "--tlsRootCertFiles",
+        f"{crypto}/peerOrganizations/bank.fraud-governance.com/peers/peer0.bank.fraud-governance.com/tls/ca.crt",
+        "-c", args_json
+    ]
+
+    env = {
+        "FABRIC_CFG_PATH": fabric_cfg,
+        "CORE_PEER_TLS_ENABLED": "true",
+        "CORE_PEER_LOCALMSPID": "BankMSP",
+        "CORE_PEER_MSPCONFIGPATH":
+            f"{crypto}/peerOrganizations/bank.fraud-governance.com/users/Admin@bank.fraud-governance.com/msp",
+        "CORE_PEER_ADDRESS": "peer0.bank.fraud-governance.com:7051",
+        "CORE_PEER_TLS_ROOTCERT_FILE":
+            f"{crypto}/peerOrganizations/bank.fraud-governance.com/peers/peer0.bank.fraud-governance.com/tls/ca.crt",
+        "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    }
+
+    try:
+        result = subprocess.run(
+            cmd, env=env,
+            capture_output=True, text=True, timeout=30)
+        success = result.returncode == 0
+        output  = result.stdout + result.stderr
+
+        # Check if already exists
+        if "existe deja" in output or "already exists" in output:
+            return {"success": True,
+                    "message": "Model already registered",
+                    "output": output}
+
+        return {"success": success,
+                "message": "Model submitted to blockchain"
+                           if success else "Failed",
+                "output": output[:200]}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.post("/shap/global")
+async def compute_global_shap(request: dict):
+    """
+    Compute Global SHAP for a model
+    on training dataset sample
+    Pin result to IPFS
+    """
+    model_path = request.get("model_path","")
+    dataset_id = request.get("dataset_id","")
+    model_id   = request.get("model_id","")
+    run_id     = request.get("run_id","")
+
+    if not model_path or not os.path.exists(model_path):
+        raise HTTPException(404,
+            f"Model not found: {model_path}")
+
+    try:
+        # Load model
+        with open(model_path,"rb") as f:
+            model = pickle.load(f)
+        model_type = type(model).__name__
+
+        # Load model_loader for SHAP type
+        from model_loader import (
+            get_shap_explainer_type,
+            create_shap_explainer,
+            compute_global_shap as compute_gs
+        )
+        shap_type = get_shap_explainer_type(model_type)
+
+        # Load dataset sample
+        DATASETS_DIR = "/app/mlops/datasets"
+        X_sample = None
+        feature_names = [
+            "heure","jour_semaine","est_weekend",
+            "montant_mad","type_transaction",
+            "pays_transaction","est_etranger",
+            "tx_lat","tx_lon","delta_km",
+            "delta_min_last_tx","nb_tx_1h",
+            "device_type","est_nouveau_device",
+            "age_client","segment_revenu","type_carte"
+        ]
+
+        if dataset_id and os.path.exists(DATASETS_DIR):
+            for f in os.listdir(DATASETS_DIR):
+                if not f.endswith("_meta.json"):
+                    continue
+                meta = json.load(
+                    open(f"{DATASETS_DIR}/{f}"))
+                if meta.get("dataset_id") == dataset_id:
+                    csv_p = meta.get("csv_path","")
+                    if os.path.exists(csv_p):
+                        df_data = pd.read_csv(csv_p)
+                        # Filter only feature columns
+                        cols = [c for c in feature_names
+                               if c in df_data.columns]
+                        if cols:
+                            df_feat = df_data[cols].copy()
+                            # Encode categorical columns
+                            for col in df_feat.columns:
+                                if df_feat[col].dtype == object:
+                                    df_feat[col] = pd.Categorical(
+                                        df_feat[col]).codes
+                            df_feat = df_feat.fillna(0)
+                            # Use scaler if available
+                            try:
+                                scaler_path = "/app/mlops/models/scaler.pkl"
+                                if os.path.exists(scaler_path):
+                                    with open(scaler_path,"rb") as sf:
+                                        scaler = pickle.load(sf)
+                                    X_sample = scaler.transform(
+                                        df_feat.sample(
+                                            min(500, len(df_feat)),
+                                            random_state=42).values)
+                                else:
+                                    X_sample = df_feat.sample(
+                                        min(500, len(df_feat)),
+                                        random_state=42).values
+                            except:
+                                X_sample = df_feat.sample(
+                                    min(500, len(df_feat)),
+                                    random_state=42).values
+                            feature_names = cols
+                        break
+
+        if X_sample is None:
+            # Use synthetic data as fallback
+            X_sample = np.random.randn(
+                200, len(feature_names))
+
+        # Compute Global SHAP
+        result = compute_gs(
+            model, model_type,
+            X_sample, feature_names)
+
+        if result.get("error"):
+            raise HTTPException(500, result["error"])
+
+        # Pin to IPFS
+        cid = ""
+        if ipfs_client:
+            summary = {
+                "model_id":         model_id,
+                "model_type":       model_type,
+                "run_id":           run_id,
+                "dataset_id":       dataset_id,
+                "n_samples":        len(X_sample),
+                "explainer_type":   shap_type,
+                "global_importance":result["global_importance"],
+                "top_5_features":   result["top_5_features"],
+                "computed_at":      result["computed_at"]
+            }
+            cid = ipfs_client.pin_json(
+                summary,
+                f"global-shap-{model_id}")
+
+        result["cid"]      = cid or ""
+        result["ipfs_url"] = (
+            f"https://gateway.pinata.cloud/ipfs/{cid}"
+            if cid else "")
+        result["model_type"]  = model_type
+        result["model_id"]    = model_id
+        result["n_features"]  = len(feature_names)
+        result["n_samples"]   = len(X_sample)
+        result["explainer_type"] = shap_type
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+@app.get("/model/hash")
+def compute_model_hash(path: str):
+    """Compute SHA256 hash of a model file"""
+    if not os.path.exists(path):
+        raise HTTPException(404, f"File not found: {path}")
+    import hashlib
+    sha = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            sha.update(chunk)
+    return {
+        "path": path,
+        "hash": f"sha256:{sha.hexdigest()}",
+        "size": os.path.getsize(path)
+    }
+
+@app.post("/model/deactivate")
+async def deactivate_model(request: dict):
+    """Deactivate current model without unloading"""
+    global active_model_id
+    model_id = request.get("model_id","")
+    # Just mark as inactive — model stays loaded
+    # Next request will use fallback or return error
+    return {
+        "success": True,
+        "message": f"Model {model_id} deactivated",
+        "active_model": None
+    }

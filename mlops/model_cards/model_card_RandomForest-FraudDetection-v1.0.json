@@ -1,0 +1,70 @@
+{
+  "schema_version": "1.0",
+  "model_id": "RandomForest-FraudDetection-v1.0",
+  "model_type": "RandomForestClassifier",
+  "framework": "scikit-learn / xgboost",
+  "governance": {
+    "framework": "BlockML-Gov",
+    "regulatory": [
+      "EU AI Act 2024",
+      "SR 11-7 (Federal Reserve)",
+      "Basel III",
+      "BAM Morocco"
+    ],
+    "explainability": "SHAP TreeExplainer",
+    "blockchain": "Hyperledger Fabric 2.5"
+  },
+  "performance": {
+    "auc_roc": 0.9503,
+    "auc_pr": 0.8861,
+    "f1_score": 0.9313,
+    "precision": 0.9954,
+    "recall": 0.875,
+    "n_train": 40000,
+    "n_test": 10000
+  },
+  "thresholds": {
+    "fraud_threshold": 0.85,
+    "legitimate_threshold": 0.4,
+    "auc_min": 0.95,
+    "f1_min": 0.85,
+    "recall_min": 0.8
+  },
+  "data": {
+    "dataset_name": "transactions_bancaires.csv",
+    "dataset_hash": "sha256:88fd9f20436ef10616b66e4e44acd793e25f265ea604a5103eb536efae3081a0",
+    "n_features": 17,
+    "features": [
+      "heure",
+      "jour_semaine",
+      "est_weekend",
+      "montant_mad",
+      "est_etranger",
+      "delta_km",
+      "delta_min_last_tx",
+      "nb_tx_1h",
+      "est_nouveau_device",
+      "age_client",
+      "age_compte_jours",
+      "ratio_montant_moy",
+      "risque_horaire",
+      "type_transaction_enc",
+      "device_type_enc",
+      "segment_revenu_enc",
+      "type_carte_enc"
+    ],
+    "fraud_rate": 0.0248
+  },
+  "model_file": {
+    "local_path": "",
+    "hash_sha256": ""
+  },
+  "metadata": {
+    "submitted_by": "data.scientist1",
+    "created_at": "2026-04-22T12:14:51.855031",
+    "project": "BlockML-Gov",
+    "use_case": "Banking Fraud Detection",
+    "language": "Python 3.11",
+    "docker_image": "asmaeourrai/blockmlgov-api:v1"
+  }
+}

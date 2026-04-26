@@ -1,0 +1,360 @@
+{
+  "dataset_id": "DS-transactions_bancaires-v1",
+  "timestamp": "2026-04-22T20:24:39.459370",
+  "feature_importance": [
+    {
+      "feature": "ratio_montant_moy",
+      "importance": 0.2764,
+      "rank": 1
+    },
+    {
+      "feature": "heure",
+      "importance": 0.1919,
+      "rank": 2
+    },
+    {
+      "feature": "montant_mad",
+      "importance": 0.1238,
+      "rank": 3
+    },
+    {
+      "feature": "nb_tx_1h",
+      "importance": 0.1101,
+      "rank": 4
+    },
+    {
+      "feature": "risque_horaire",
+      "importance": 0.1017,
+      "rank": 5
+    },
+    {
+      "feature": "est_etranger",
+      "importance": 0.0944,
+      "rank": 6
+    },
+    {
+      "feature": "delta_min_last_tx",
+      "importance": 0.0349,
+      "rank": 7
+    },
+    {
+      "feature": "tx_lon",
+      "importance": 0.0274,
+      "rank": 8
+    },
+    {
+      "feature": "delta_km",
+      "importance": 0.022,
+      "rank": 9
+    },
+    {
+      "feature": "est_nouveau_device",
+      "importance": 0.0083,
+      "rank": 10
+    },
+    {
+      "feature": "tx_lat",
+      "importance": 0.0078,
+      "rank": 11
+    },
+    {
+      "feature": "age_compte_jours",
+      "importance": 0.0007,
+      "rank": 12
+    },
+    {
+      "feature": "age_client",
+      "importance": 0.0003,
+      "rank": 13
+    },
+    {
+      "feature": "jour_semaine",
+      "importance": 0.0002,
+      "rank": 14
+    },
+    {
+      "feature": "est_weekend",
+      "importance": 0.0001,
+      "rank": 15
+    }
+  ],
+  "correlations": [
+    {
+      "feature": "est_etranger",
+      "correlation": 0.6123,
+      "abs_corr": 0.6123,
+      "direction": "\u2192 FRAUD"
+    },
+    {
+      "feature": "montant_mad",
+      "correlation": 0.5898,
+      "abs_corr": 0.5898,
+      "direction": "\u2192 FRAUD"
+    },
+    {
+      "feature": "risque_horaire",
+      "correlation": 0.4707,
+      "abs_corr": 0.4707,
+      "direction": "\u2192 FRAUD"
+    },
+    {
+      "feature": "delta_km",
+      "correlation": 0.4545,
+      "abs_corr": 0.4545,
+      "direction": "\u2192 FRAUD"
+    },
+    {
+      "feature": "nb_tx_1h",
+      "correlation": 0.3945,
+      "abs_corr": 0.3945,
+      "direction": "\u2192 FRAUD"
+    },
+    {
+      "feature": "est_nouveau_device",
+      "correlation": 0.3604,
+      "abs_corr": 0.3604,
+      "direction": "\u2192 FRAUD"
+    },
+    {
+      "feature": "ratio_montant_moy",
+      "correlation": 0.3552,
+      "abs_corr": 0.3552,
+      "direction": "\u2192 FRAUD"
+    },
+    {
+      "feature": "tx_lon",
+      "correlation": 0.2161,
+      "abs_corr": 0.2161,
+      "direction": "\u2192 FRAUD"
+    },
+    {
+      "feature": "heure",
+      "correlation": -0.2131,
+      "abs_corr": 0.2131,
+      "direction": "\u2192 LEGITIMATE"
+    },
+    {
+      "feature": "tx_lat",
+      "correlation": 0.0459,
+      "abs_corr": 0.0459,
+      "direction": "\u2192 FRAUD"
+    },
+    {
+      "feature": "est_weekend",
+      "correlation": -0.0063,
+      "abs_corr": 0.0063,
+      "direction": "\u2192 LEGITIMATE"
+    },
+    {
+      "feature": "jour_semaine",
+      "correlation": -0.0058,
+      "abs_corr": 0.0058,
+      "direction": "\u2192 LEGITIMATE"
+    },
+    {
+      "feature": "age_compte_jours",
+      "correlation": 0.0035,
+      "abs_corr": 0.0035,
+      "direction": "\u2192 FRAUD"
+    },
+    {
+      "feature": "age_client",
+      "correlation": 0.0021,
+      "abs_corr": 0.0021,
+      "direction": "\u2192 FRAUD"
+    },
+    {
+      "feature": "delta_min_last_tx",
+      "correlation": -0.0006,
+      "abs_corr": 0.0006,
+      "direction": "\u2192 LEGITIMATE"
+    }
+  ],
+  "statistics": [
+    {
+      "feature": "heure",
+      "mean": 12.4666,
+      "std": 3.9641,
+      "min": 0.0,
+      "max": 23.0,
+      "missing": 0.0,
+      "zeros": 0.0022
+    },
+    {
+      "feature": "jour_semaine",
+      "mean": 2.9974,
+      "std": 1.9963,
+      "min": 0.0,
+      "max": 6.0,
+      "missing": 0.0,
+      "zeros": 0.142
+    },
+    {
+      "feature": "est_weekend",
+      "mean": 0.2847,
+      "std": 0.4513,
+      "min": 0.0,
+      "max": 1.0,
+      "missing": 0.0,
+      "zeros": 0.7153
+    },
+    {
+      "feature": "montant_mad",
+      "mean": 351.4409,
+      "std": 1012.7335,
+      "min": 0.67,
+      "max": 19816.66,
+      "missing": 0.0,
+      "zeros": 0.0
+    },
+    {
+      "feature": "est_etranger",
+      "mean": 0.0119,
+      "std": 0.1084,
+      "min": 0.0,
+      "max": 1.0,
+      "missing": 0.0,
+      "zeros": 0.9881
+    },
+    {
+      "feature": "tx_lat",
+      "mean": 33.4931,
+      "std": 1.9488,
+      "min": 6.5244,
+      "max": 51.5074,
+      "missing": 0.0,
+      "zeros": 0.0
+    },
+    {
+      "feature": "tx_lon",
+      "mean": -6.6019,
+      "std": 3.2913,
+      "min": -74.006,
+      "max": 55.2708,
+      "missing": 0.0,
+      "zeros": 0.0
+    },
+    {
+      "feature": "delta_km",
+      "mean": 38.9254,
+      "std": 312.2729,
+      "min": 0.0,
+      "max": 6322.57,
+      "missing": 0.0,
+      "zeros": 0.0999
+    },
+    {
+      "feature": "delta_min_last_tx",
+      "mean": 1068.4607,
+      "std": 200255.1245,
+      "min": -522157.0,
+      "max": 519715.0,
+      "missing": 0.0,
+      "zeros": 0.0
+    },
+    {
+      "feature": "nb_tx_1h",
+      "mean": 1.3534,
+      "std": 1.4977,
+      "min": 0.0,
+      "max": 20.0,
+      "missing": 0.0,
+      "zeros": 0.2848
+    },
+    {
+      "feature": "est_nouveau_device",
+      "mean": 0.0649,
+      "std": 0.2464,
+      "min": 0.0,
+      "max": 1.0,
+      "missing": 0.0,
+      "zeros": 0.9351
+    },
+    {
+      "feature": "age_client",
+      "mean": 46.4683,
+      "std": 16.6467,
+      "min": 18.0,
+      "max": 75.0,
+      "missing": 0.0,
+      "zeros": 0.0
+    },
+    {
+      "feature": "age_compte_jours",
+      "mean": 1851.6864,
+      "std": 1051.4253,
+      "min": 30.0,
+      "max": 3650.0,
+      "missing": 0.0,
+      "zeros": 0.0
+    },
+    {
+      "feature": "ratio_montant_moy",
+      "mean": 1.8207,
+      "std": 14.2902,
+      "min": 0.002,
+      "max": 1057.2,
+      "missing": 0.0,
+      "zeros": 0.0
+    },
+    {
+      "feature": "risque_horaire",
+      "mean": 0.2193,
+      "std": 0.5235,
+      "min": 0.0,
+      "max": 3.0,
+      "missing": 0.0,
+      "zeros": 0.8199
+    }
+  ],
+  "quality": {
+    "total_score": 100,
+    "max_score": 100,
+    "rating": "Excellent \u2705",
+    "breakdown": {
+      "sufficient_rows": {
+        "score": 20,
+        "max": 20,
+        "value": 50000,
+        "status": "\u2705"
+      },
+      "fraud_rate": {
+        "score": 20,
+        "max": 20,
+        "value": 0.0248,
+        "status": "\u2705"
+      },
+      "required_features": {
+        "score": 20,
+        "max": 20,
+        "value": "17/17",
+        "status": "\u2705"
+      },
+      "missing_values": {
+        "score": 15,
+        "max": 15,
+        "value": "0.00%",
+        "status": "\u2705"
+      },
+      "no_duplicates": {
+        "score": 10,
+        "max": 10,
+        "value": "0 duplicates",
+        "status": "\u2705"
+      },
+      "correct_types": {
+        "score": 10,
+        "max": 10,
+        "value": "15/15 numeric",
+        "status": "\u2705"
+      },
+      "outliers": {
+        "score": 5,
+        "max": 5,
+        "value": "5469 outliers",
+        "status": "\u2705"
+      }
+    }
+  },
+  "comparison": null
+}
