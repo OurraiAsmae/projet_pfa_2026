@@ -13,3 +13,5 @@ auth/
 # Docker volumes
 redis_data/
 mlflow_data/
+fabric-samples/
+*.lock
