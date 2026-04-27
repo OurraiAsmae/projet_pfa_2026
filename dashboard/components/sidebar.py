@@ -14,6 +14,7 @@ PAGES_MAP = {
         "📋 Audit Logs"
     ],
     "Data Scientist": [
+        "📬 Notifications",
         "📤 Upload Model",
         "📊 Upload Dataset",
         "🔬 MLflow Experiments",

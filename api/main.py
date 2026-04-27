@@ -88,6 +88,43 @@ async def lifespan(app: FastAPI):
         print(f"⚠️ SHAP: {e}")
     yield
 
+
+# ── RabbitMQ Notifications ────────────────────────────
+def publish_rejection_notification(model_id: str, reason: str, 
+                                    category: str, rejected_by: str,
+                                    role: str):
+    """Publish rejection notification to RabbitMQ"""
+    try:
+        import pika, json
+        from datetime import datetime
+        connection = pika.BlockingConnection(
+            pika.ConnectionParameters(
+                host="rabbitmq",
+                credentials=pika.PlainCredentials("guest", "guest"),
+                connection_attempts=2,
+                retry_delay=1))
+        channel = connection.channel()
+        channel.queue_declare(queue="ds_notifications", durable=True)
+        message = {
+            "type":        "MODEL_REJECTED",
+            "model_id":    model_id,
+            "category":    category,
+            "reason":      reason,
+            "rejected_by": rejected_by,
+            "role":        role,
+            "timestamp":   datetime.utcnow().isoformat(),
+            "read":        False,
+        }
+        channel.basic_publish(
+            exchange="",
+            routing_key="ds_notifications",
+            body=json.dumps(message),
+            properties=pika.BasicProperties(delivery_mode=2))
+        connection.close()
+        print(f"✅ Notification sent for {model_id}")
+    except Exception as e:
+        print(f"⚠️ RabbitMQ notification failed: {e}")
+
 app = FastAPI(title="Fraud Governance API", version="4.0.0", lifespan=lifespan)
 
 class Transaction(BaseModel):
@@ -408,6 +445,31 @@ def get_shap(tx_id: str):
         raise HTTPException(404, result["error"])
     return result
 
+
+@app.get("/transactions/recent")
+def get_recent_transactions(limit: int = 50):
+    """Get recent transactions from Redis"""
+    if not redis_client:
+        raise HTTPException(503, "Redis non disponible")
+    try:
+        # Get recent decisions from Redis
+        keys = redis_client.client.keys("decision:*")
+        transactions = []
+        for key in keys[:limit]:
+            data = redis_client.client.get(key)
+            if data:
+                try:
+                    tx = json.loads(data)
+                    transactions.append(tx)
+                except:
+                    pass
+        # Sort by timestamp desc
+        transactions.sort(
+            key=lambda x: x.get("timestamp", ""), reverse=True)
+        return {"transactions": transactions[:limit], "total": len(transactions)}
+    except Exception as e:
+        return {"transactions": [], "total": 0, "error": str(e)}
+
 @app.get("/stats")
 def get_stats():
     if not redis_client:
@@ -637,6 +699,14 @@ async def api_reject_model(model_id: str, reason: str = "Rejected", category: st
         [model_id, reason, category],
         signer
     )
+    if result.get("success"):
+        role = "Compliance Officer" if "User2" in signer else "ML Engineer"
+        publish_rejection_notification(
+            model_id=model_id,
+            reason=reason,
+            category=category,
+            rejected_by=signer.split("@")[0],
+            role=role)
     return result
 
 

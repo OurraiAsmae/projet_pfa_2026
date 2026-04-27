@@ -25,7 +25,8 @@ from components.topbar import render_topbar
 # Pages imports
 from pages.admin.user_management import show as admin_users
 from pages.admin.audit_logs import show as admin_logs
-from pages.data_scientist.upload_model import show as ds_upload_model
+from pages.data_scientist.upload_model import show as ds_upload
+from pages.data_scientist.notifications import show as ds_notifications, show_popup_if_notifications
 from pages.data_scientist.upload_dataset import show as ds_upload_dataset
 from pages.data_scientist.mlflow_experiments import show as ds_mlflow
 from pages.data_scientist.shap_explorer import show as ds_shap
@@ -49,7 +50,8 @@ inject_css()
 ROUTES = {
     "👥 User Management":       admin_users,
     "📋 Audit Logs":            admin_logs,
-    "📤 Upload Model":          ds_upload_model,
+    "📬 Notifications":         ds_notifications,
+    "📤 Upload Model":          ds_upload,
     "📊 Upload Dataset":        ds_upload_dataset,
     "🔬 MLflow Experiments":    ds_mlflow,
     "🔍 SHAP Explorer":         ds_shap,
@@ -81,6 +83,11 @@ def main():
 
     # Render sidebar + get selected page
     page = render_sidebar(user, handle_logout)
+
+    # Popup notifications pour Data Scientist
+    if user.get("role") == "Data Scientist":
+        show_popup_if_notifications()
+
 
     # Render top bar
     render_topbar(page, user)
