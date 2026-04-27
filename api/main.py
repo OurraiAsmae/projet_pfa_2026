@@ -663,6 +663,40 @@ def get_models_info():
 
 import subprocess
 
+
+def peer_query_local(function: str, args: list, msp_user: str = "Admin@bank.fraud-governance.com") -> dict:
+    """Appelle le peer chaincode query depuis l'API"""
+    crypto_path = "/home/asmae/fraud-governance-system/blockchain/network/crypto-material"
+    fabric_cfg  = "/home/asmae/fraud-governance-system/blockchain/network"
+    peer_bin    = "/usr/local/bin/peer"
+    args_json   = json.dumps({"function": function, "Args": args})
+    cmd = [peer_bin, "chaincode", "query",
+        "-C", "modelgovernance",
+        "-n", "model-governance-cc",
+        "-c", args_json
+    ]
+    env = {
+        "FABRIC_CFG_PATH": fabric_cfg,
+        "CORE_PEER_TLS_ENABLED": "true",
+        "CORE_PEER_LOCALMSPID": "BankMSP",
+        "CORE_PEER_MSPCONFIGPATH": f"{crypto_path}/peerOrganizations/bank.fraud-governance.com/users/{msp_user}/msp",
+        "CORE_PEER_ADDRESS": "peer0.bank.fraud-governance.com:7051",
+        "CORE_PEER_TLS_ROOTCERT_FILE": f"{crypto_path}/peerOrganizations/bank.fraud-governance.com/peers/peer0.bank.fraud-governance.com/tls/ca.crt",
+        "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    }
+    try:
+        result = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=30)
+        if result.returncode == 0:
+            try:
+                data = json.loads(result.stdout.strip())
+                return {"success": True, "data": data}
+            except:
+                return {"success": True, "data": result.stdout.strip()}
+        else:
+            return {"success": False, "error": result.stderr}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 def peer_invoke_local(function: str, args: list, msp_user: str = "Admin@bank.fraud-governance.com") -> dict:
     """Appelle le peer chaincode invoke depuis l'API"""
     crypto_path = "/home/asmae/fraud-governance-system/blockchain/network/crypto-material"
@@ -754,6 +788,45 @@ async def api_reject_model(model_id: str, reason: str = "Rejected", category: st
             role=role)
     return result
 
+
+
+@app.get("/governance/history/{model_id}")
+async def get_model_history(model_id: str):
+    """Get full blockchain history for a model"""
+    result = peer_query_local(
+        "GetModelHistory",
+        [model_id],
+        "Admin@bank.fraud-governance.com"
+    )
+    return result
+
+@app.get("/governance/all-models")
+async def get_all_models():
+    """Get all models from blockchain"""
+    model_ids = [
+        "RandomForest-FraudDetection-v1.0",
+        "grad-FraudDetection-v1.0",
+        "log-FraudDetection-v1.0",
+        "gradient-FraudDetection-v1.0",
+        "Forest-FraudDetection-v1.0",
+        "logistic-v1.0",
+        "RF-Test-v4.0",
+        "random-FraudDetection-v2.0",
+        "test-FraudDetection-v2.0",
+        "LL-FraudDetection-v2.0",
+        "LogisticRegression-FraudDetection-v2.0",
+    ]
+    models = []
+    for mid in model_ids:
+        try:
+            result = peer_query_local(
+                "GetModel", [mid],
+                "Admin@bank.fraud-governance.com")
+            if result.get("success") and result.get("data"):
+                models.append(result["data"])
+        except:
+            pass
+    return {"models": models, "total": len(models)}
 
 @app.get("/governance/model/{model_id}")
 async def api_get_model(model_id: str):
