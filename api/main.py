@@ -629,6 +629,17 @@ async def api_revoke_model(model_id: str, reason: str = "Revoked"):
     )
     return result
 
+@app.post("/governance/reject/{model_id}")
+async def api_reject_model(model_id: str, reason: str = "Rejected", category: str = "Compliance", signer: str = "User2@bank.fraud-governance.com"):
+    """Reject model via peer - Compliance Officer (User2) ou ML Engineer (User3)"""
+    result = peer_invoke_local(
+        "RejectModel",
+        [model_id, reason, category],
+        signer
+    )
+    return result
+
+
 @app.get("/governance/model/{model_id}")
 async def api_get_model(model_id: str):
     """Get model status depuis blockchain"""
@@ -1106,15 +1117,134 @@ def compute_model_hash(path: str):
         "size": os.path.getsize(path)
     }
 
+
+
+@app.post("/model/evaluate-upload")
+async def evaluate_model_upload(
+    file: UploadFile = File(...),
+    dataset_id: str = "",
+    dataset_path: str = ""):
+    """Evaluate uploaded pkl model on test data"""
+    import pickle, hashlib, tempfile, glob, re
+    import pandas as pd
+    from sklearn.metrics import (
+        roc_auc_score, f1_score,
+        precision_score, recall_score,
+        average_precision_score)
+
+    # Resolve dataset path
+    datasets_dir = "/app/mlops/datasets"
+    if not dataset_path:
+        if dataset_id:
+            hash_match = re.search(r"([a-f0-9]{8})", dataset_id)
+            if hash_match:
+                h = hash_match.group(1)
+                matches = glob.glob(f"{datasets_dir}/*{h}*.csv")
+                dataset_path = matches[0] if matches else ""
+        if not dataset_path:
+            dataset_path = f"{datasets_dir}/transactions_bancaires_v2_9adb21e7.csv"
+
+    # Save uploaded file to temp
+    content = await file.read()
+    with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as tmp:
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    try:
+        with open(tmp_path, "rb") as f:
+            model = pickle.load(f)
+
+        if not os.path.exists(dataset_path):
+            raise HTTPException(404, f"Dataset not found: {dataset_path}")
+
+        df = pd.read_csv(dataset_path)
+        target_col = "fraude" if "fraude" in df.columns else "is_fraud"
+        if target_col not in df.columns:
+            raise HTTPException(400, f"Target column not found")
+
+        feature_cols = [
+            "heure", "jour_semaine", "est_weekend", "montant_mad",
+            "type_transaction", "pays_transaction", "est_etranger",
+            "tx_lat", "tx_lon", "delta_km", "delta_min_last_tx",
+            "nb_tx_1h", "device_type", "est_nouveau_device",
+            "age_client", "segment_revenu", "type_carte"
+        ]
+        available = [c for c in feature_cols if c in df.columns]
+        X = df[available].copy()
+        y = df[target_col]
+
+        for col in X.select_dtypes(include="object").columns:
+            X[col] = pd.Categorical(X[col]).codes
+        X = X.fillna(0)
+
+        from sklearn.model_selection import train_test_split
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42, stratify=y)
+
+        X_eval = X_test.copy()
+        model_class = type(model).__name__
+        if "Logistic" in model_class or "Linear" in model_class:
+            scaler_path = "/app/mlops/models/scaler.pkl"
+            if os.path.exists(scaler_path):
+                import pickle as _pkl
+                with open(scaler_path, "rb") as _f:
+                    _scaler = _pkl.load(_f)
+                X_eval = pd.DataFrame(_scaler.transform(X_eval), columns=X_eval.columns)
+        y_proba = model.predict_proba(X_eval)[:, 1] if hasattr(model, "predict_proba") else model.predict(X_eval)
+
+        # Optimal threshold
+        from sklearn.metrics import precision_recall_curve
+        prec_arr, rec_arr, thresholds = precision_recall_curve(y_test, y_proba)
+        f1_arr = 2 * prec_arr * rec_arr / (prec_arr + rec_arr + 1e-8)
+        best_thresh = thresholds[f1_arr[:-1].argmax()] if len(thresholds) > 0 else 0.5
+        y_pred = (y_proba >= best_thresh).astype(int)
+
+        auc_roc   = round(float(roc_auc_score(y_test, y_proba)), 4)
+        auc_pr    = round(float(average_precision_score(y_test, y_proba)), 4)
+        f1        = round(float(f1_score(y_test, y_pred)), 4)
+        precision = round(float(precision_score(y_test, y_pred, zero_division=0)), 4)
+        recall    = round(float(recall_score(y_test, y_pred, zero_division=0)), 4)
+
+        sha = hashlib.sha256(content)
+        model_hash = f"sha256:{sha.hexdigest()}"
+
+        return {
+            "success":       True,
+            "auc_roc":       auc_roc,
+            "auc_pr":        auc_pr,
+            "f1":            f1,
+            "precision":     precision,
+            "recall":        recall,
+            "n_train":       len(X_train),
+            "n_test":        len(X_test),
+            "model_hash":    model_hash,
+            "features_used": len(available),
+            "threshold":     round(float(best_thresh), 4),
+            "dataset_used":  dataset_path.split("/")[-1],
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Evaluation error: {str(e)}")
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
 @app.post("/model/deactivate")
 async def deactivate_model(request: dict):
-    """Deactivate current model without unloading"""
+    """Deactivate current model — clear Redis + global"""
     global active_model_id
     model_id = request.get("model_id","")
-    # Just mark as inactive — model stays loaded
-    # Next request will use fallback or return error
-    return {
-        "success": True,
-        "message": f"Model {model_id} deactivated",
-        "active_model": None
-    }
+    try:
+        # Clear Redis active model
+        redis_client.delete("active_model")
+        redis_client.delete("active_model_id")
+        # Clear global
+        active_model_id = None
+        return {
+            "success": True,
+            "message": f"Model {model_id} deactivated",
+            "active_model": None
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}

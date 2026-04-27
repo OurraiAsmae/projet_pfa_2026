@@ -272,6 +272,48 @@ func (c *ModelGovernanceContract) Deploy(ctx contractapi.TransactionContextInter
 	return nil
 }
 
+
+func (c *ModelGovernanceContract) RejectModel(ctx contractapi.TransactionContextInterface, modelID, reason, category string) error {
+        callerID, err := getCallerID(ctx)
+        if err != nil {
+                return err
+        }
+
+        data, _ := ctx.GetStub().GetState("MODEL_" + modelID)
+        if data == nil {
+                return fmt.Errorf("modele %s introuvable", modelID)
+        }
+        var model ModelAsset
+        json.Unmarshal(data, &model)
+
+        // Compliance Officer peut rejeter depuis SUBMITTED ou COMPLIANCE_VALIDATED
+        // ML Engineer peut rejeter depuis COMPLIANCE_VALIDATED
+        isComplianceOfficer := strings.Contains(callerID, "User2@bank.fraud-governance.com")
+        isMLEngineer := strings.Contains(callerID, "User3@bank.fraud-governance.com")
+
+        if !isComplianceOfficer && !isMLEngineer {
+                return fmt.Errorf("REJET seul Compliance Officer ou ML Engineer peut rejeter signataire: %s", callerID)
+        }
+
+        allowedStatuses := map[string]bool{
+                "SUBMITTED":            isComplianceOfficer,
+                "COMPLIANCE_VALIDATED": isComplianceOfficer || isMLEngineer,
+                "TECHNICAL_APPROVED":   false,
+        }
+
+        if !allowedStatuses[model.Status] {
+                return fmt.Errorf("REJET statut %s non rejectable par %s", model.Status, callerID)
+        }
+
+        model.Status = "REJECTED"
+        model.RevokeReason = fmt.Sprintf("[%s] %s", category, reason)
+        model.ComplianceOfficerID = callerID
+
+        newData, _ := json.Marshal(model)
+        ctx.GetStub().PutState("MODEL_"+modelID, newData)
+        ctx.GetStub().SetEvent("MODEL_REJECTED", newData)
+        return nil
+}
 func (c *ModelGovernanceContract) RevokeModel(ctx contractapi.TransactionContextInterface, modelID, reason string) error {
 	data, _ := ctx.GetStub().GetState("MODEL_" + modelID)
 	if data == nil {

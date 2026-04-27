@@ -11,7 +11,7 @@ import httpx
 import time
 from datetime import datetime
 from utils.api_client import (
-    approve_technical, revoke_model,
+    approve_technical, revoke_model, reject_model,
     get_models_info, API_URL, ML_URL
 )
 from utils.model_registry import get_mlflow_bc_mapping
@@ -400,8 +400,9 @@ def _render_model_card(name: str,
 
                         with st.spinner(
                             "Recording rejection..."):
-                            result2 = revoke_model(
-                                mid, full_reason)
+                            result2 = reject_model(
+                                mid, full_reason, category,
+                                "User3@bank.fraud-governance.com")
                             if result2.get("success"):
                                 cid = _pin_rejection_report(
                                     mid,
@@ -409,7 +410,7 @@ def _render_model_card(name: str,
                                     category,
                                     justification,
                                     recommended_action,
-                                    severity, met)
+                                    severity, info)
                                 st.error(
                                     f"❌ **{mid}** "
                                     f"rejected — "

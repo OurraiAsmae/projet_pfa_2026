@@ -9,7 +9,7 @@ import httpx
 import time
 from datetime import datetime
 from utils.api_client import (
-    validate_compliance, revoke_model,
+    validate_compliance, revoke_model, reject_model,
     API_URL
 )
 from utils.model_registry import get_mlflow_bc_mapping
@@ -318,8 +318,8 @@ def _render_card(name: str, info: dict,
                         f"By: {user['username']} | "
                         f"{datetime.utcnow().isoformat()}")
                     with st.spinner("Recording..."):
-                        r2 = revoke_model(
-                            info["bc_id"], full)
+                        r2 = reject_model(
+                            info["bc_id"], full, category)
                         if r2.get("success"):
                             cid = _pin_rejection(
                                 info["bc_id"],

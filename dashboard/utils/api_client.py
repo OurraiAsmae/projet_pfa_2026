@@ -161,6 +161,26 @@ def revoke_model(model_id: str,
     except Exception as e:
         return {"error": str(e)}
 
+def reject_model(model_id: str, reason: str, category: str, signer: str = "User2@bank.fraud-governance.com") -> dict:
+    try:
+        r = httpx.post(
+            f"{API_URL}/governance/reject/{model_id}",
+            params={"reason": reason, "category": category, "signer": signer},
+            timeout=TIMEOUT_MEDIUM)
+        return r.json()
+    except Exception as e:
+        return {"error": str(e)}
+
+def reject_model(model_id: str, reason: str, category: str, signer: str = "User2@bank.fraud-governance.com") -> dict:
+    try:
+        r = httpx.post(
+            f"{API_URL}/governance/reject/{model_id}",
+            params={"reason": reason, "category": category, "signer": signer},
+            timeout=TIMEOUT_MEDIUM)
+        return r.json()
+    except Exception as e:
+        return {"error": str(e)}
+
 def get_model_governance(model_id: str) -> dict:
     try:
         r = httpx.get(
@@ -347,3 +367,50 @@ def mlflow_params(lst) -> dict:
         return {i["key"]: i["value"]
                 for i in lst if "key" in i}
     return lst if isinstance(lst, dict) else {}
+
+def get_all_models_governance() -> list:
+    """Récupère tous les modèles depuis la blockchain"""
+    model_ids = [
+        "RandomForest-FraudDetection-v1.0",
+        "grad-FraudDetection-v1.0",
+        "log-FraudDetection-v1.0",
+        "gradient-FraudDetection-v1.0",
+        "Forest-FraudDetection-v1.0",
+        "logistic-v1.0",
+        "RF-Test-v4.0",
+        "random-FraudDetection-v2.0",
+        "test-FraudDetection-v2.0",
+        "LL-FraudDetection-v2.0",
+    ]
+    results = []
+    for mid in model_ids:
+        try:
+            r = httpx.get(
+                f"{API_URL}/governance/model/{mid}",
+                timeout=TIMEOUT_SHORT)
+            if r.status_code == 200:
+                data = r.json()
+                if data.get("modelID"):
+                    results.append(data)
+                elif data.get("success") and data.get("data"):
+                    results.append(data["data"])
+        except Exception:
+            pass
+    return results
+
+def evaluate_model_metrics(model_path: str, dataset_id: str = "") -> dict:
+    """Evaluate model by uploading pkl file to API"""
+    try:
+        with open(model_path, "rb") as f:
+            files = {"file": ("model.pkl", f, "application/octet-stream")}
+            params = {}
+            if dataset_id:
+                params["dataset_id"] = dataset_id
+            r = httpx.post(
+                f"{API_URL}/model/evaluate-upload",
+                files=files,
+                params=params,
+                timeout=120)
+        return r.json()
+    except Exception as e:
+        return {"error": str(e)}

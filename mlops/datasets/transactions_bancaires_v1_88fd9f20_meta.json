@@ -40,6 +40,11 @@
   "models_trained": [
     "log-FraudDetection-v1.0",
     "Forest-FraudDetection-v1.0",
-    "logistic-v1.0"
+    "logistic-v1.0",
+    "loftest-FraudDetection-v1.0",
+    "Random_FraudDetection-v1.0",
+    "testlog_FraudDetection-v1.0",
+    "testlog-FraudDetection-v1.0",
+    "RandomForest-FraudDetection-v1.0"
   ]
 }

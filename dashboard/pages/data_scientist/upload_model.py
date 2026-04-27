@@ -10,6 +10,7 @@ import pandas as pd
 import httpx
 from datetime import datetime
 from utils.api_client import (
+    evaluate_model_metrics,
     get_datasets, GW_URL, ML_URL, API_URL
 )
 
@@ -46,15 +47,14 @@ FEATURE_NAMES = [
     "age_client","segment_revenu","type_carte"
 ]
 
-def _fetch_metrics_from_mlflow(model_hash: str,
-                                model_type: str) -> dict:
-    """Search MLflow for existing run by model hash"""
+def _fetch_metrics_from_mlflow(run_name: str) -> dict:
+    """Search MLflow for run by exact run_name = BC ID"""
     try:
+        best_match = None
         r = httpx.get(
             f"{ML_URL}/api/2.0/mlflow/experiments/search",
             params={"max_results": 50}, timeout=5)
         experiments = r.json().get("experiments", [])
-
         for exp in experiments:
             if exp["name"] == "Default":
                 continue
@@ -64,31 +64,36 @@ def _fetch_metrics_from_mlflow(model_hash: str,
                       "max_results": 20},
                 timeout=5)
             runs = rr.json().get("runs", [])
-
             for run in runs:
-                data   = run.get("data", {})
-                params = _mlflow_params(
-                    data.get("params", []))
-                # Match by model hash
-                if params.get("model_hash_sha256") == model_hash:
-                    metrics = _mlflow_dict(
-                        data.get("metrics", []))
-                    return {
-                        "found":    True,
-                        "run_id":   run["info"]["run_id"],
-                        "auc_roc":  metrics.get("auc_roc", 0.0),
-                        "auc_pr":   metrics.get("auc_pr",  0.0),
-                        "f1":       metrics.get("f1",       0.0),
-                        "precision":metrics.get("precision",0.0),
-                        "recall":   metrics.get("recall",   0.0),
-                        "n_train":  int(metrics.get("n_train", 0)),
-                        "n_test":   int(metrics.get("n_test",  0)),
-                        "metrics":  metrics,
-                        "params":   params,
-                    }
+                info    = run.get("info", {})
+                data    = run.get("data", {})
+                if info.get("run_name") == run_name:
+                    metrics = _mlflow_dict(data.get("metrics", []))
+                    params  = _mlflow_params(data.get("params", []))
+                    if metrics.get("auc_roc", 0) > 0:
+                        # Garder le meilleur run (AUC max)
+                        candidate = {
+                            "found":     True,
+                            "run_id":    info["run_id"],
+                            "run_name":  run_name,
+                            "auc_roc":   metrics.get("auc_roc",   0.0),
+                            "auc_pr":    metrics.get("auc_pr",    0.0),
+                            "f1":        metrics.get("f1",        0.0),
+                            "precision": metrics.get("precision", 0.0),
+                            "recall":    metrics.get("recall",    0.0),
+                            "n_train":   int(metrics.get("n_train", 0)),
+                            "n_test":    int(metrics.get("n_test",  0)),
+                            "metrics":   metrics,
+                            "params":    params,
+                        }
+                        if best_match is None or candidate["auc_roc"] > best_match["auc_roc"]:
+                            best_match = candidate
+        if best_match:
+            return best_match
     except Exception as e:
-        print(f"MLflow search: {e}")
+        print(f"MLflow search error: {e}")
     return {"found": False}
+
 
 def _check_policy(auc, f1, rec, prec) -> list:
     checks = [
@@ -217,35 +222,11 @@ def show(user: dict):
         st.caption(
             "Policy PR-005: "
             "AUC-ROC ≥ 0.95 | F1 ≥ 0.85 | Recall ≥ 0.90")
-
-        auto_fetch = st.toggle(
-            "🔄 Auto-fetch metrics from MLflow",
-            value=True,
-            help="Retrieve metrics automatically via model hash")
-
-        if auto_fetch:
-            st.info(
-                "Metrics will be auto-fetched from MLflow "
-                "after upload. Manual input disabled.")
-            auc = apr = f1 = prec = rec = 0.0
-            ntr = nte = 0
-            trt = 0.0
-        else:
-            c1,c2,c3,c4 = st.columns(4)
-            auc  = c1.number_input("AUC-ROC",0.0,1.0,
-                0.9503,0.0001,format="%.4f")
-            apr  = c2.number_input("AUC-PR",0.0,1.0,
-                0.8861,0.0001,format="%.4f")
-            f1   = c3.number_input("F1-Score",0.0,1.0,
-                0.9313,0.0001,format="%.4f")
-            prec = c4.number_input("Precision",0.0,1.0,
-                0.9954,0.0001,format="%.4f")
-            c1,c2,c3,c4 = st.columns(4)
-            rec  = c1.number_input("Recall",0.0,1.0,
-                0.9000,0.0001,format="%.4f")
-            ntr  = c2.number_input("N Train",value=40000)
-            nte  = c3.number_input("N Test",value=10000)
-            trt  = c4.number_input("Train Time(s)",value=7.46)
+        st.info("🔄 Metrics will be automatically computed by evaluating the model on test data after upload.")
+        auc = apr = f1 = prec = rec = 0.0
+        ntr = nte = 0
+        trt = 0.0
+        auto_fetch = True
 
         st.subheader("3️⃣ Training Dataset")
         if datasets:
@@ -334,30 +315,46 @@ def _process(mfile, mname, ver, desc,
         run_id = ""
 
         if auto_fetch:
-            mlf = _fetch_metrics_from_mlflow(
-                mhash, model_type)
+            # 1. Try MLflow first by run_name = BC ID
+            bc_id = f"{mname}-v{ver}"
+            mlf = _fetch_metrics_from_mlflow(bc_id)
             if mlf.get("found"):
-                auc  = mlf["auc_roc"]
-                apr  = mlf["auc_pr"]
-                f1   = mlf["f1"]
-                prec = mlf["precision"]
-                rec  = mlf["recall"]
-                ntr  = mlf["n_train"]
-                nte  = mlf["n_test"]
+                auc   = mlf["auc_roc"]
+                apr   = mlf["auc_pr"]
+                f1    = mlf["f1"]
+                prec  = mlf["precision"]
+                rec   = mlf["recall"]
+                ntr   = mlf["n_train"]
+                nte   = mlf["n_test"]
                 run_id = mlf["run_id"]
-                st.success(
-                    "✅ Metrics auto-fetched from MLflow!")
+                st.success(f"✅ Metrics fetched from MLflow ({bc_id})")
                 c1,c2,c3,c4 = st.columns(4)
                 c1.metric("AUC-ROC", f"{auc:.4f}")
                 c2.metric("F1",      f"{f1:.4f}")
                 c3.metric("Recall",  f"{rec:.4f}")
                 c4.metric("Precision",f"{prec:.4f}")
             else:
-                st.warning(
-                    "Model not found in MLflow. "
-                    "Please register your model first "
-                    "or disable auto-fetch.")
-                return
+                # 2. Fallback: evaluate pkl with selected dataset
+                st.info("⏳ Not found in MLflow — evaluating model on dataset...")
+                eval_r = evaluate_model_metrics(tmp_path, dataset_id=did)
+                if eval_r.get("success"):
+                    auc   = eval_r["auc_roc"]
+                    apr   = eval_r["auc_pr"]
+                    f1    = eval_r["f1"]
+                    prec  = eval_r["precision"]
+                    rec   = eval_r["recall"]
+                    ntr   = eval_r["n_train"]
+                    nte   = eval_r["n_test"]
+                    mhash = eval_r["model_hash"]
+                    st.success("✅ Metrics computed from model evaluation!")
+                    c1,c2,c3,c4 = st.columns(4)
+                    c1.metric("AUC-ROC", f"{auc:.4f}")
+                    c2.metric("F1",      f"{f1:.4f}")
+                    c3.metric("Recall",  f"{rec:.4f}")
+                    c4.metric("Precision",f"{prec:.4f}")
+                else:
+                    st.warning(f"⚠️ Could not compute metrics: {eval_r.get('error','Unknown')}. Continuing with 0.0")
+
 
         # STEP 3 — MLflow (register if not already)
         status.info("⏳ Step 3/7 — MLflow tracking...")

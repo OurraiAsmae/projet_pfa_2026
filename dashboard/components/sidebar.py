@@ -26,6 +26,7 @@ PAGES_MAP = {
     "ML Engineer": [
         "🔧 Technical Approval",
         "🚀 Model Deployment",
+        "📜 Model History",
         "📉 Drift Monitoring"
     ],
     "Fraud Analyst": [

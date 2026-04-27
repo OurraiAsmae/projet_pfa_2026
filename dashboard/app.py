@@ -34,6 +34,7 @@ from pages.compliance_officer.history import show as co_history
 from pages.ml_engineer.approval import show as mle_approval
 from pages.ml_engineer.deployment import show as mle_deployment
 from pages.ml_engineer.drift_monitoring import show as mle_drift
+from pages.ml_engineer.history import show as mle_history
 from pages.fraud_analyst.live_dashboard import show as fa_dashboard
 from pages.fraud_analyst.test_transaction import show as fa_test
 from pages.fraud_analyst.alerts import show as fa_alerts
@@ -56,6 +57,7 @@ ROUTES = {
     "📋 Validation History":    co_history,
     "🔧 Technical Approval":    mle_approval,
     "🚀 Model Deployment":      mle_deployment,
+    "📜 Model History":         mle_history,
     "📉 Drift Monitoring":      mle_drift,
     "📊 Live Dashboard":        fa_dashboard,
     "🧪 Test Transaction":      fa_test,
