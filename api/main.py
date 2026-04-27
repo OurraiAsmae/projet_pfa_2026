@@ -125,6 +125,32 @@ def publish_rejection_notification(model_id: str, reason: str,
     except Exception as e:
         print(f"⚠️ RabbitMQ notification failed: {e}")
 
+
+def getTxTime_py():
+    from datetime import datetime
+    return datetime.utcnow().isoformat()
+
+def publish_amber_alert(tx_data: dict):
+    """Publish amber zone transaction to RabbitMQ"""
+    try:
+        import pika, json
+        connection = pika.BlockingConnection(
+            pika.ConnectionParameters(
+                host="rabbitmq",
+                credentials=pika.PlainCredentials("guest", "guest"),
+                connection_attempts=2,
+                retry_delay=1))
+        channel = connection.channel()
+        channel.queue_declare(queue="amber_alerts", durable=True)
+        channel.basic_publish(
+            exchange="",
+            routing_key="amber_alerts",
+            body=json.dumps(tx_data),
+            properties=pika.BasicProperties(delivery_mode=2))
+        connection.close()
+    except Exception as e:
+        print(f"⚠️ Amber alert failed: {e}")
+
 app = FastAPI(title="Fraud Governance API", version="4.0.0", lifespan=lifespan)
 
 class Transaction(BaseModel):
@@ -307,11 +333,17 @@ async def predict(tx: Transaction):
     # Prédiction avec modèle ACTIF
     score = round(random.uniform(0.1, 0.99), 4)
     ml_used = False
-    if state["model"] and state["scaler"]:
+    if state["model"]:
         try:
             X = np.array([[float(features_dict.get(f, 0)) for f in FEATURE_NAMES]])
-            X_scaled = state["scaler"].transform(X)
-            score = float(state["model"].predict_proba(X_scaled)[0][1])
+            # Appliquer scaler seulement si nécessaire (LogisticRegression, SVM)
+            model_class = type(state["model"]).__name__
+            needs_scaler = any(k in model_class for k in ["Logistic","Linear","SVM","SVR"])
+            if needs_scaler and state["scaler"]:
+                X_input = state["scaler"].transform(X)
+            else:
+                X_input = X
+            score = float(state["model"].predict_proba(X_input)[0][1])
             ml_used = True
         except Exception as e:
             print(f"⚠️ Prédiction: {e}")
@@ -377,6 +409,19 @@ async def predict(tx: Transaction):
                 blockchain_ok = resp.json().get("success", False)
         except Exception as e:
             print(f"Gateway error: {e}")
+
+    # Publish amber alert to RabbitMQ
+    if zone == "AMBIGU":
+        publish_amber_alert({
+            "tx_id":           tx.tx_id,
+            "score":           score,
+            "montant_mad":     tx.montant_mad,
+            "pays_transaction":tx.pays_transaction,
+            "device_type":     tx.device_type,
+            "heure":           tx.heure,
+            "top_features":    top_features,
+            "timestamp":       getTxTime_py(),
+        })
 
     return DecisionResponse(
         tx_id=tx.tx_id, zone=zone, score=score,

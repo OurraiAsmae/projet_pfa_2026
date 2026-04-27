@@ -32,7 +32,6 @@ PAGES_MAP = {
     ],
     "Fraud Analyst": [
         "📊 Live Dashboard",
-        "🧪 Test Transaction",
         "🚨 Alerts"
     ],
     "Internal Auditor": [

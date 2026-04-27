@@ -37,7 +37,6 @@ from pages.ml_engineer.deployment import show as mle_deployment
 from pages.ml_engineer.drift_monitoring import show as mle_drift
 from pages.ml_engineer.history import show as mle_history
 from pages.fraud_analyst.live_dashboard import show as fa_dashboard
-from pages.fraud_analyst.test_transaction import show as fa_test
 from pages.fraud_analyst.alerts import show as fa_alerts
 from pages.auditor.audit_trail import show as aud_trail
 from pages.auditor.reports import show as aud_reports
@@ -62,7 +61,6 @@ ROUTES = {
     "📜 Model History":         mle_history,
     "📉 Drift Monitoring":      mle_drift,
     "📊 Live Dashboard":        fa_dashboard,
-    "🧪 Test Transaction":      fa_test,
     "🚨 Alerts":                fa_alerts,
     "📋 Audit Trail":           aud_trail,
     "📄 Compliance Reports":    aud_reports,
