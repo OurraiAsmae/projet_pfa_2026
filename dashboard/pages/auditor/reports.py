@@ -125,7 +125,7 @@ def show(user: dict):
             r = httpx.post(
                 f"{API_URL}/ipfs/pin-json",
                 json={
-                    "content": report,
+                    "data": report,
                     "name": f"report-{report_type.replace(' ','-')}-{period}"
                 },
                 timeout=30)

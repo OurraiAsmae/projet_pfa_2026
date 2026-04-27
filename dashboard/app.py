@@ -40,6 +40,7 @@ from pages.fraud_analyst.live_dashboard import show as fa_dashboard
 from pages.fraud_analyst.alerts import show as fa_alerts
 from pages.auditor.audit_trail import show as aud_trail
 from pages.auditor.reports import show as aud_reports
+from pages.auditor.certify_reports import show as aud_certify
 from pages.regulator.system_status import show as reg_status
 
 # Inject CSS
@@ -64,8 +65,8 @@ ROUTES = {
     "🚨 Alerts":                fa_alerts,
     "📋 Audit Trail":           aud_trail,
     "📄 Compliance Reports":    aud_reports,
-    "🔐 Integrity Check":       aud_trail,
-    "📋 Certified Reports":     aud_reports,
+    "🔐 Integrity Check":       aud_certify,
+    "📋 Certified Reports":     aud_certify,
     "🏛️ System Status":         reg_status,
     "🔍 Inspection":            reg_status,
     "📨 BAM Submissions":       reg_status,

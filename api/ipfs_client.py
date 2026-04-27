@@ -259,15 +259,36 @@ class IPFSClient:
 
     # ── Retrieve from IPFS ───────────────────────────
     def get_from_ipfs(self, cid: str) -> Optional[dict]:
-        """Retrieve JSON content from IPFS"""
+        """Retrieve JSON content from IPFS via Pinata API"""
         try:
+            # Use Pinata dedicated gateway
             r = requests.get(
-                f"{GATEWAY_BASE}/{cid}",
+                f"https://aquamarine-binding-narwhal-353.mypinata.cloud/ipfs/{cid}",
+                headers=HEADERS,
                 timeout=15)
             if r.status_code == 200:
                 return r.json()
         except Exception as e:
-            print(f"❌ get_from_ipfs error: {e}")
+            print(f"❌ Pinata gateway: {e}")
+
+        # Fallback: search in pinList and reconstruct
+        try:
+            rows = self.list_pinned(100)
+            for row in rows:
+                if row.get("cid") == cid:
+                    # Found metadata, try public gateway
+                    for gw in [
+                        f"https://ipfs.io/ipfs/{cid}",
+                        f"https://gateway.pinata.cloud/ipfs/{cid}",
+                    ]:
+                        try:
+                            r2 = requests.get(gw, timeout=10)
+                            if r2.status_code == 200:
+                                return r2.json()
+                        except:
+                            continue
+        except Exception as e:
+            print(f"❌ get_from_ipfs fallback: {e}")
         return None
 
     # ── Utils ─────────────────────────────────────────
