@@ -18,38 +18,49 @@ TOPIC        = "fraud-transactions"
 
 # Configs de fraude pour simuler différents patterns
 FRAUD_PATTERNS = [
-    # Pattern 1: Transaction normale (légitime)
+    # Pattern 1: Transaction très normale (légitime certain)
     {
         "name": "normal",
-        "weight": 0.7,
-        "montant_range": (50, 2000),
-        "heure_range": (8, 22),
+        "weight": 0.6,
+        "montant_range": (10, 500),
+        "heure_range": (9, 18),
         "est_etranger": 0,
         "est_nouveau_device": 0,
-        "delta_km_range": (0, 10),
-        "nb_tx_1h_range": (1, 3),
+        "delta_km_range": (0, 2),
+        "nb_tx_1h_range": (1, 1),
     },
     # Pattern 2: Fraude évidente
     {
         "name": "fraud_obvious",
-        "weight": 0.1,
-        "montant_range": (5000, 50000),
-        "heure_range": (0, 5),
+        "weight": 0.15,
+        "montant_range": (10000, 50000),
+        "heure_range": (0, 4),
         "est_etranger": 1,
         "est_nouveau_device": 1,
-        "delta_km_range": (500, 5000),
-        "nb_tx_1h_range": (5, 20),
+        "delta_km_range": (1000, 5000),
+        "nb_tx_1h_range": (10, 20),
     },
     # Pattern 3: Fraude subtile (amber zone)
     {
         "name": "fraud_subtle",
-        "weight": 0.2,
-        "montant_range": (1000, 8000),
-        "heure_range": (1, 7),
+        "weight": 0.15,
+        "montant_range": (2000, 8000),
+        "heure_range": (1, 6),
         "est_etranger": 0,
         "est_nouveau_device": 1,
-        "delta_km_range": (50, 200),
-        "nb_tx_1h_range": (3, 8),
+        "delta_km_range": (100, 500),
+        "nb_tx_1h_range": (4, 10),
+    },
+    # Pattern 4: Achat en ligne normal
+    {
+        "name": "online_normal",
+        "weight": 0.1,
+        "montant_range": (20, 300),
+        "heure_range": (10, 23),
+        "est_etranger": 0,
+        "est_nouveau_device": 0,
+        "delta_km_range": (0, 1),
+        "nb_tx_1h_range": (1, 2),
     },
 ]
 
@@ -133,7 +144,7 @@ def main(rate: float = float(os.getenv("RATE","1.0")), count: int = 0):
                 value=tx)
 
             sent += 1
-            icon = {"normal":"🟢","fraud_obvious":"🔴","fraud_subtle":"🟡"}[pattern["name"]]
+            icon = {"normal":"🟢","fraud_obvious":"🔴","fraud_subtle":"🟡","online_normal":"🟢"}.get(pattern["name"],"⚪")
             print(f"{icon} [{sent}] {tx['tx_id']} | "
                   f"{tx['montant_mad']:>8.2f} MAD | "
                   f"Pattern: {pattern['name']}")

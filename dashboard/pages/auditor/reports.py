@@ -170,13 +170,18 @@ def show(user: dict):
             r = httpx.get(f"{API_URL}/ipfs/list", timeout=TIMEOUT)
             if r.status_code == 200:
                 files = r.json().get("files", [])
-                reports = [f for f in files if "report" in f.get("name","").lower()]
+                reports = [f for f in files 
+                          if "report" in f.get("name","").lower()
+                          or "certified" in f.get("name","").lower()]
                 if reports:
                     for rep in reports:
+                        cid  = rep.get("cid","")
+                        name = rep.get("name","")
+                        is_local = cid.startswith("LOCAL-")
+                        storage  = "📦 Redis" if is_local else "📌 IPFS"
                         st.markdown(f"""
-                        📄 **{rep.get('name','')}**
-                        — CID: `{rep.get('cid','')[:20]}...`
-                        — {rep.get('size',0)} bytes
+                        📄 **{name}**
+                        — {storage} CID: `{cid[:30]}...`
                         """)
                 else:
                     st.info("No reports pinned yet.")
