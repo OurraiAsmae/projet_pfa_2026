@@ -104,32 +104,7 @@ def show(user: dict):
                     except Exception as e:
                         st.error(f"❌ {e}")
 
-                # Reset password
-                new_pw = col2.text_input(
-                    "New password",
-                    key=f"pw_{u['id']}",
-                    type="password",
-                    placeholder="New password")
-                if col3.button("🔑 Reset",
-                    key=f"rst_{u['id']}"):
-                    if new_pw:
-                        try:
-                            r = httpx.put(
-                                f"{AUTH_URL}/users/{u['id']}",
-                                headers=auth_headers(),
-                                json={"password": new_pw},
-                                timeout=8)
-                            if r.status_code == 200:
-                                st.success(
-                                    f"✅ Password reset "
-                                    f"for {u['username']}")
-                            else:
-                                st.error(
-                                    f"❌ {r.json().get('detail')}")
-                        except Exception as e:
-                            st.error(f"❌ {e}")
-                    else:
-                        st.warning("Enter new password")
+
 
                 # Delete
                 if col4.button("🗑️ Delete",

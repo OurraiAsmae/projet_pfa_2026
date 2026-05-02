@@ -45,6 +45,7 @@
     "Random_FraudDetection-v1.0",
     "testlog_FraudDetection-v1.0",
     "testlog-FraudDetection-v1.0",
-    "RandomForest-FraudDetection-v1.0"
+    "RandomForest-FraudDetection-v1.0",
+    "RandomForest-FraudDetection-v2.0"
   ]
 }
