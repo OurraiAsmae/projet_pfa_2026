@@ -120,37 +120,45 @@ def show(user: dict):
                     st.code(f"Integrity Hash: {integrity_hash}")
 
                     st.markdown("---")
-                    st.markdown("**✍️ Certify this Report:**")
-
-                    notes = st.text_area(
-                        "Certification Notes",
-                        placeholder="e.g. Verified all metrics...",
-                        key=f"notes_{cid}")
-
+                    st.markdown("**✍️ Your Decision:**")
+                    note = st.text_area(
+                        "Notes (required)",
+                        placeholder="e.g. Verified all metrics and compliance...",
+                        key=f"notes_{cid}",
+                        height=80)
                     col1, col2 = st.columns(2)
                     with col1:
                         if st.button("✅ Certify & Sign", key=f"certify_{cid[:8]}", type="primary", use_container_width=True):
-                            if len(notes) < 20:
-                                st.error("Please provide certification notes (min 20 chars)")
+                            if len(note) < 10:
+                                st.error("Min 10 chars required")
                             else:
                                 auditor_id = user.get("username", "external.auditor")
                                 signature  = _generate_signature(content_str, auditor_id)
                                 with st.spinner("Certifying..."):
-                                    result = _certify_report(content, cid, auditor_id, signature, notes)
+                                    result = _certify_report(content, cid, auditor_id, signature, note)
                                 if result.get("cid"):
                                     st.success("✅ Report certified!")
-                                    st.code(f"Signature: {signature}\nCertified CID: {result['cid']}")
-                                    st.info("📤 Report is now available to the Regulator.")
+                                    st.info(f"📌 CID: `{result['cid']}`")
                                     del st.session_state[load_key]
                                     st.rerun()
                                 else:
                                     st.error(f"❌ {result}")
                     with col2:
                         if st.button("❌ Reject", key=f"reject_{cid[:8]}", use_container_width=True):
-                            st.error("❌ Report rejected")
-                            del st.session_state[load_key]
-                            st.rerun()
-
+                            if len(note) < 10:
+                                st.error("Min 10 chars required")
+                            else:
+                                from datetime import datetime as _dt
+                                import httpx as _httpx
+                                try:
+                                    _httpx.post(f"{API_URL}/ipfs/pin-json",
+                                        json={"data": {"original_cid": cid, "status": "REJECTED", "reason": note, "rejected_by": user.get("username",""), "rejected_at": _dt.utcnow().isoformat()},
+                                              "name": f"rejected-{name[:30]}"}, timeout=10)
+                                except:
+                                    pass
+                                st.error("❌ Report rejected!")
+                                del st.session_state[load_key]
+                                st.rerun()
     with tab2:
         st.subheader("📋 Certified Reports")
         with st.spinner("Loading..."):
