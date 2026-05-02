@@ -928,21 +928,45 @@ except Exception as e:
 
 @app.get("/ipfs/list")
 def list_ipfs_files():
-    """Liste tous les fichiers pinnés sur IPFS Pinata"""
-    if not ipfs_client:
-        raise HTTPException(503, "IPFS non disponible")
-    files = ipfs_client.list_pinned(50)
+    """Liste tous les fichiers — IPFS + Redis fallback"""
+    files = []
+    if ipfs_client:
+        try:
+            files = ipfs_client.list_pinned(50)
+        except:
+            pass
+    if redis_client:
+        try:
+            redis_pins = redis_client.client.lrange("ipfs:pins", 0, 199)
+            existing_cids = {f.get("cid") for f in files}
+            for pin in redis_pins:
+                try:
+                    p = json.loads(pin)
+                    if p.get("cid") not in existing_cids:
+                        files.append(p)
+                        existing_cids.add(p.get("cid"))
+                except:
+                    pass
+        except:
+            pass
     return {"files": files, "total": len(files)}
 
 @app.get("/ipfs/get/{cid}")
 def get_ipfs_content(cid: str):
-    """Récupère le contenu d'un CID depuis IPFS"""
-    if not ipfs_client:
-        raise HTTPException(503, "IPFS non disponible")
-    content = ipfs_client.get_from_ipfs(cid)
-    if not content:
-        raise HTTPException(404, f"CID {cid} non trouvé")
-    return content
+    """Récupère le contenu — IPFS + Redis fallback"""
+    if cid.startswith("LOCAL-") and redis_client:
+        data = redis_client.client.get(f"ipfs:{cid}")
+        if data:
+            try:
+                parsed = json.loads(data)
+                return parsed.get("content", parsed)
+            except:
+                pass
+    if ipfs_client:
+        content = ipfs_client.get_from_ipfs(cid)
+        if content:
+            return content
+    raise HTTPException(404, f"CID {cid} non trouvé")
 
 @app.post("/ipfs/pin-model-card")
 async def pin_model_card(
