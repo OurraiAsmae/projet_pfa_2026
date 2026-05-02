@@ -369,7 +369,19 @@ def mlflow_params(lst) -> dict:
     return lst if isinstance(lst, dict) else {}
 
 def get_all_models_governance() -> list:
-    """Récupère tous les modèles depuis la blockchain"""
+    """Récupère tous les modèles depuis la blockchain via endpoint dynamique"""
+    try:
+        r = httpx.get(
+            f"{API_URL}/governance/all-models",
+            timeout=30)
+        if r.status_code == 200:
+            return r.json().get("models", [])
+    except Exception as e:
+        print(f"get_all_models_governance error: {e}")
+    return []
+
+def get_all_models_governance_old() -> list:
+    """Legacy — liste fixe"""
     model_ids = [
         "RandomForest-FraudDetection-v1.0",
         "grad-FraudDetection-v1.0",

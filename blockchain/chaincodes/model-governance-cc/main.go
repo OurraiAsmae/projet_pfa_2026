@@ -482,6 +482,35 @@ func (c *ModelGovernanceContract) GetModelHistory(ctx contractapi.TransactionCon
 	return string(result), nil
 }
 
+
+func (c *ModelGovernanceContract) GetAllModels(ctx contractapi.TransactionContextInterface) (string, error) {
+	iterator, err := ctx.GetStub().GetStateByRange("MODEL_", "MODEL_~")
+	if err != nil {
+		return "", err
+	}
+	defer iterator.Close()
+	var models []ModelAsset
+	for iterator.HasNext() {
+		result, err := iterator.Next()
+		if err != nil {
+			continue
+		}
+		if result.Key == "MODEL_ACTIVE" {
+			continue
+		}
+		var model ModelAsset
+		if err := json.Unmarshal(result.Value, &model); err != nil {
+			continue
+		}
+		models = append(models, model)
+	}
+	data, err := json.Marshal(models)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
 func main() {
 	cc, err := contractapi.NewChaincode(&ModelGovernanceContract{})
 	if err != nil {

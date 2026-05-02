@@ -802,31 +802,22 @@ async def get_model_history(model_id: str):
 
 @app.get("/governance/all-models")
 async def get_all_models():
-    """Get all models from blockchain"""
-    model_ids = [
-        "RandomForest-FraudDetection-v1.0",
-        "grad-FraudDetection-v1.0",
-        "log-FraudDetection-v1.0",
-        "gradient-FraudDetection-v1.0",
-        "Forest-FraudDetection-v1.0",
-        "logistic-v1.0",
-        "RF-Test-v4.0",
-        "random-FraudDetection-v2.0",
-        "test-FraudDetection-v2.0",
-        "LL-FraudDetection-v2.0",
-        "LogisticRegression-FraudDetection-v2.0",
-    ]
-    models = []
-    for mid in model_ids:
+    """Get all models from blockchain dynamically"""
+    result = peer_query_local(
+        "GetAllModels", [],
+        "Admin@bank.fraud-governance.com"
+    )
+    if result.get("success"):
         try:
-            result = peer_query_local(
-                "GetModel", [mid],
-                "Admin@bank.fraud-governance.com")
-            if result.get("success") and result.get("data"):
-                models.append(result["data"])
-        except:
-            pass
-    return {"models": models, "total": len(models)}
+            data = result.get("data", [])
+            if isinstance(data, str):
+                data = json.loads(data)
+            if not data:
+                data = []
+            return {"models": data, "total": len(data)}
+        except Exception as e:
+            return {"models": [], "total": 0, "error": str(e)}
+    return {"models": [], "total": 0, "error": result.get("error", "")}
 
 @app.get("/governance/model/{model_id}")
 async def api_get_model(model_id: str):
