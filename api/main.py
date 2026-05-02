@@ -538,9 +538,9 @@ def get_recent_transactions(limit: int = 50):
     if not redis_client:
         raise HTTPException(503, "Redis non disponible")
     try:
-        # Get recent decisions from Redis
-        keys = redis_client.client.keys("decision:*")
         transactions = []
+        # Try tx:*:processed keys
+        keys = redis_client.client.keys("tx:*:processed")
         for key in keys[:limit]:
             data = redis_client.client.get(key)
             if data:
@@ -549,6 +549,17 @@ def get_recent_transactions(limit: int = 50):
                     transactions.append(tx)
                 except:
                     pass
+        # Also try decision:* keys
+        if not transactions:
+            keys2 = redis_client.client.keys("decision:*")
+            for key in keys2[:limit]:
+                data = redis_client.client.get(key)
+                if data:
+                    try:
+                        tx = json.loads(data)
+                        transactions.append(tx)
+                    except:
+                        pass
         # Sort by timestamp desc
         transactions.sort(
             key=lambda x: x.get("timestamp", ""), reverse=True)
@@ -571,10 +582,25 @@ def get_alerts():
 @app.get("/decision/{tx_id}")
 def get_decision(tx_id: str):
     if redis_client:
+        # Try standard cache
         cached = redis_client.get_cached_decision(tx_id)
         if cached:
             return {"source": "redis_cache", "data": cached}
-    return {"source": "blockchain", "tx_id": tx_id}
+        # Try tx:*:processed key
+        data = redis_client.client.get(f"tx:{tx_id}:processed")
+        if data:
+            try:
+                return {"source": "redis_cache", "data": json.loads(data)}
+            except:
+                pass
+        # Try validation key
+        data2 = redis_client.client.get(f"validation:{tx_id}")
+        if data2:
+            try:
+                return {"source": "redis_validation", "data": json.loads(data2)}
+            except:
+                pass
+    return {"source": "not_found", "tx_id": tx_id, "data": None}
 
 @app.get("/drift/latest")
 def get_drift_latest():

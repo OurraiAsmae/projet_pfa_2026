@@ -122,9 +122,25 @@ def show(user: dict):
     # ── Tab 2: Transaction Lookup ─────────────────────
     with tab2:
         st.subheader("🔍 Transaction Verification")
-        st.caption("Verify any transaction on the blockchain")
-
-        tx_id = st.text_input("Transaction ID", "TX-AMBER-001")
+        # Load recent transactions
+        try:
+            import httpx as _httpx
+            r_recent = _httpx.get(f"{API_URL}/transactions/recent", params={"limit": 20}, timeout=10)
+            if r_recent.status_code == 200:
+                recent_txs = r_recent.json().get("transactions", [])
+                if recent_txs:
+                    tx_options = {f"{t.get('tx_id','')} — {t.get('zone','')} — Score:{t.get('score',0):.3f}": t.get('tx_id','') for t in recent_txs}
+                    selected_label = st.selectbox("Select from recent transactions", list(tx_options.keys()))
+                    tx_id = tx_options[selected_label]
+                    manual = st.text_input("Or enter TX ID manually", "")
+                    if manual:
+                        tx_id = manual
+                else:
+                    tx_id = st.text_input("Transaction ID", "TX-AMBER-001")
+            else:
+                tx_id = st.text_input("Transaction ID", "TX-AMBER-001")
+        except:
+            tx_id = st.text_input("Transaction ID", "TX-AMBER-001")
         if st.button("🔍 Verify on Blockchain", type="primary"):
             try:
                 r = httpx.get(f"{API_URL}/decision/{tx_id}", timeout=TIMEOUT)
@@ -132,11 +148,19 @@ def show(user: dict):
                 if d.get("data"):
                     data = d["data"]
                     st.success(f"✅ Transaction found — Source: {d.get('source')}")
+                    d = data if isinstance(data, dict) else {}
                     c1,c2,c3 = st.columns(3)
-                    c1.metric("Zone",  data.get("zone",""))
-                    c2.metric("Score", f"{data.get('score',0):.4f}")
-                    c3.metric("Model", data.get("active_model",""))
-                    st.json(data)
+                    c1.metric("Zone",  d.get("zone","N/A"))
+                    c2.metric("Score", f"{d.get('score',0):.4f}")
+                    c3.metric("Model", d.get("ml_model_used","") and "RF-v2.0" or "N/A")
+                    st.markdown(f"**TX ID:** `{d.get('tx_id','N/A')}`")
+                    st.markdown(f"**Blockchain Recorded:** {'✅' if d.get('blockchain_recorded') else '❌'}")
+                    st.markdown(f"**ML Model Used:** {'✅' if d.get('ml_model_used') else '❌'}")
+                    st.markdown(f"**SHAP CID:** `{d.get('shap_cid','N/A')}`")
+                    if d.get("top_features"):
+                        st.markdown("**Top SHAP Features:**")
+                        for feat in d["top_features"][:5]:
+                            st.markdown(f"- `{feat.get('feature','')}`: {feat.get('shap_value',0):+.4f}")
                 else:
                     st.warning("Transaction not found in cache.")
             except Exception as e:
