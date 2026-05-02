@@ -351,7 +351,7 @@ async def predict(tx: Transaction):
     # Zone routing
     if force_ambigu:
         zone = "AMBIGU"
-    elif score > 0.85:
+    elif score > 0.80:
         zone = "FRAUDE"
     elif score < 0.40:
         zone = "LEGITIME"

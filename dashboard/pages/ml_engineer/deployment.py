@@ -48,26 +48,74 @@ def show(user: dict):
         """, unsafe_allow_html=True)
 
     with st.spinner("Loading models..."):
-        mapping      = get_mlflow_bc_mapping()
+        from utils.api_client import get_all_models_governance
         local_models = get_models_info()
-        local_map    = {
-            m["name"]: m for m in local_models}
+        local_map    = {m["name"]: m for m in local_models}
+        all_bc_models = get_all_models_governance()
 
-    candidates = _build_candidates(
-        mapping, local_map)
+    type_to_local = {
+        "RandomForestClassifier":    "random_forest",
+        "XGBClassifier":             "gradient_boosting",
+        "GradientBoostingClassifier":"gradient_boosting",
+        "LogisticRegression":        "logistic_regression",
+    }
+
+    def _make_info(m):
+        # Try to get model type from MLflow via run_id
+        model_type = "Unknown"
+        mlflow_run_id = m.get("mlflowRunID", "")
+        if mlflow_run_id and mlflow_run_id not in ["run123", ""]:
+            try:
+                from utils.api_client import ML_URL
+                import httpx
+                r = httpx.get(f"{ML_URL}/api/2.0/mlflow/runs/get",
+                    params={"run_id": mlflow_run_id}, timeout=5)
+                if r.status_code == 200:
+                    params = {p["key"]:p["value"] 
+                             for p in r.json().get("run",{}).get("data",{}).get("params",[])}
+                    model_type = params.get("model_type", "Unknown")
+            except:
+                pass
+        local_name = type_to_local.get(model_type, "")
+        local_m    = local_map.get(local_name, {})
+        # Fallback: search by model_type in local_map
+        if not local_m:
+            for k, v in local_map.items():
+                if v.get("model_type","") == model_type:
+                    local_m = v
+                    local_name = k
+                    break
+        return {
+            "bc_id":       m.get("modelID",""),
+            "bc_status":   m.get("status",""),
+            "model_type":  model_type,
+            "auc_roc":     m.get("auc", 0),
+            "f1":          m.get("f1", 0),
+            "dataset_id":  m.get("dataHash","")[:20],
+            "submitted_by": m.get("scientistID","").split("@")[0],
+            "local_name":  local_name,
+            "local_path":  local_m.get("path",""),
+            "local_size":  local_m.get("size_mb",0),
+            "is_active":   local_m.get("is_active",False),
+            "local_found": bool(local_m),
+            "model_hash":  "N/A",
+            "on_chain":    True,
+        }
+
+    candidates = {m.get("modelID"): _make_info(m) 
+                  for m in all_bc_models
+                  if m.get("status") not in ["SUBMITTED","UNKNOWN",""]}
 
     if not candidates:
         st.warning("No models available.")
         return
 
-    # Separate by status — HIDE REVOKED + SUBMITTED
     ready     = {k:v for k,v in candidates.items()
                  if v["bc_status"] == "TECHNICAL_APPROVED"}
     validated = {k:v for k,v in candidates.items()
                  if v["bc_status"] == "COMPLIANCE_VALIDATED"}
     deployed  = {k:v for k,v in candidates.items()
                  if v["bc_status"] == "DEPLOYED"}
-    # SUBMITTED and REVOKED are NOT shown
 
     # ── READY FOR DEPLOYMENT ─────────────────────
     if ready:

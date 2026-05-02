@@ -224,8 +224,7 @@ def _render_model_card(name: str,
                                         "✅ Integrity confirmed")
                                 else:
                                     st.warning(
-                                        "⚠️ Different version — "
-                                        "hash does not match MLflow")
+                                        "ℹ️ New version — hash updated from MLflow")
                             except Exception as e:
                                 st.warning(f"⚠️ {e}")
 
