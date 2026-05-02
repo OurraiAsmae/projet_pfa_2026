@@ -491,6 +491,47 @@ def get_shap(tx_id: str):
     return result
 
 
+
+@app.post("/transactions/{tx_id}/validate")
+async def validate_transaction(tx_id: str, request: dict):
+    """Fraud Analyst validates an amber zone transaction"""
+    decision = request.get("decision", "")
+    reason   = request.get("reason", "")
+    analyst  = request.get("analyst", "fraud.analyst")
+    
+    if redis_client:
+        import json as _json
+        from datetime import datetime
+        validation = {
+            "tx_id":     tx_id,
+            "decision":  decision,
+            "reason":    reason,
+            "analyst":   analyst,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+        # Store validation
+        redis_client.client.setex(
+            f"validation:{tx_id}",
+            86400 * 7,
+            _json.dumps(validation))
+        # Update stats with correct key format
+        from datetime import date
+        today = date.today().isoformat()
+        if decision == "LEGITIME":
+            redis_client.client.incr(f"stats:{today}:zone:LEGITIME")
+            val = redis_client.client.get(f"stats:{today}:zone:AMBIGU")
+            if val and int(val) > 0:
+                redis_client.client.decr(f"stats:{today}:zone:AMBIGU")
+        elif decision == "FRAUDE":
+            redis_client.client.incr(f"stats:{today}:zone:FRAUDE")
+            val = redis_client.client.get(f"stats:{today}:zone:AMBIGU")
+            if val and int(val) > 0:
+                redis_client.client.decr(f"stats:{today}:zone:AMBIGU")
+        
+        return {"success": True, "tx_id": tx_id, "decision": decision}
+    
+    return {"success": False, "error": "Redis unavailable"}
+
 @app.get("/transactions/recent")
 def get_recent_transactions(limit: int = 50):
     """Get recent transactions from Redis"""
