@@ -93,7 +93,6 @@ def show(user: dict):
     st.title("📄 Compliance Reports")
     st.caption("Internal Auditor — Generate & Submit Reports to CNDP")
 
-    # ── Generate ──────────────────────────────────────
     st.subheader("📋 Generate New Report")
     col1, col2 = st.columns(2)
     with col1:
@@ -133,7 +132,6 @@ def show(user: dict):
             except Exception as e:
                 st.error(f"❌ {e}")
 
-    # ── Load Reports ──────────────────────────────────
     st.markdown("---")
     st.subheader("📁 Pinned Reports on IPFS")
 
