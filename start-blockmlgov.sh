@@ -10,6 +10,16 @@ docker compose -f docker-compose-fabric.yml up -d
 echo "⏳ Attente Fabric (20s)..."
 sleep 20
 
+# 1b. /etc/hosts EN PREMIER (avant chaincodes)
+echo ">>> Étape 1b — /etc/hosts..."
+sudo sed -i '/fraud-governance/d' /etc/hosts
+sudo bash -c 'cat >> /etc/hosts << HOSTS
+127.0.0.1  orderer.fraud-governance.com
+127.0.0.1  peer0.bank.fraud-governance.com
+127.0.0.1  peer0.audit.fraud-governance.com
+127.0.0.1  peer0.regulator.fraud-governance.com
+HOSTS'
+
 # 2. Stack applicative complète
 echo ">>> Étape 2 — Stack applicative..."
 cd ~/fraud-governance-system
@@ -28,15 +38,7 @@ make join-channels
 make deploy
 make init-ledger
 
-# 4. /etc/hosts
-echo ">>> Étape 4 — /etc/hosts..."
-sudo sed -i '/fraud-governance/d' /etc/hosts
-sudo bash -c 'cat >> /etc/hosts << HOSTS
-127.0.0.1  orderer.fraud-governance.com
-127.0.0.1  peer0.bank.fraud-governance.com
-127.0.0.1  peer0.audit.fraud-governance.com
-127.0.0.1  peer0.regulator.fraud-governance.com
-HOSTS'
+# 4. /etc/hosts déjà fait à l'étape 1b
 
 echo ""
 echo "============================================"
