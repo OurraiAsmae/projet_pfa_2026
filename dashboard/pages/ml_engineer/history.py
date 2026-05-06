@@ -2,15 +2,19 @@
 import streamlit as st
 import pandas as pd
 from utils.api_client import get_all_models_governance
+from styles import (
+    _header, _card_header, _alert_box,
+    _ICON_HISTORY, _ICON_INFO, _ICON_CHART
+)
 
 def show(user: dict):
-    st.title("📜 Model History")
+    _header("Model History", _ICON_HISTORY)
 
     with st.spinner("Loading blockchain history..."):
         all_models = get_all_models_governance()
 
     if not all_models:
-        st.info("No history yet.")
+        _alert_box("INFO", "No history yet.", _ICON_INFO)
         return
 
     status_colors = {
@@ -37,7 +41,7 @@ def show(user: dict):
                 if m.get("status") in filter_status]
 
     if not filtered:
-        st.info("No models match the filter.")
+        _alert_box("INFO", "No models match the filter.", _ICON_INFO)
         return
 
     rows = []
@@ -67,7 +71,7 @@ def show(user: dict):
 
     # Stats
     st.markdown("---")
-    st.subheader("📊 Statistics")
+    _card_header("Statistics", _ICON_CHART)
     c1, c2, c3, c4 = st.columns(4)
     statuses = [m.get("status") for m in all_models]
     c1.metric("🟢 Deployed",   statuses.count("DEPLOYED"))

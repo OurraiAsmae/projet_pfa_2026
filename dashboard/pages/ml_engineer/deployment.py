@@ -14,14 +14,13 @@ from utils.api_client import (
 from utils.model_registry import (
     get_mlflow_bc_mapping, _get_bc_status
 )
+from styles import (
+    _header, _card_header, _alert_box,
+    _ICON_MODEL, _ICON_PENDING, _ICON_CHECK, _ICON_WARNING, _ICON_ERROR, _ICON_INFO, _ICON_SHIELD, _ICON_HISTORY
+)
 
 def show(user: dict):
-    st.title("🚀 Model Deployment")
-    st.warning(
-        "⚠️ Four-Eyes Principle: "
-        "Compliance Officer validated → "
-        "ML Engineer approved → "
-        "ML Engineer deploys (you)")
+    _header("Model Deployment", _ICON_MODEL)
 
     # Current active model
     active = get_active_model()
@@ -35,7 +34,7 @@ def show(user: dict):
             <div style="font-size:.75rem;color:#64748B;
                         font-weight:600;
                         text-transform:uppercase;">
-                🟢 Currently Active in Production</div>
+                Currently Active in Production</div>
             <div style="font-size:1.1rem;font-weight:700;
                         color:#003366;margin-top:.3rem;">
                 {active.get('model_id','N/A')}</div>
@@ -107,7 +106,7 @@ def show(user: dict):
                   if m.get("status") not in ["SUBMITTED","UNKNOWN",""]}
 
     if not candidates:
-        st.warning("No models available.")
+        _alert_box("WARNING", "No models available.", _ICON_WARNING)
         return
 
     ready     = {k:v for k,v in candidates.items()
@@ -119,36 +118,26 @@ def show(user: dict):
 
     # ── READY FOR DEPLOYMENT ─────────────────────
     if ready:
-        st.subheader(
-            f"🟡 Ready for Deployment ({len(ready)})")
-        st.success("✅ Full approval chain completed!")
+        _card_header(f"Ready for Deployment ({len(ready)})", _ICON_PENDING)
+        _alert_box("SUCCESS", "Full approval chain completed!", _ICON_CHECK)
         for name, info in ready.items():
             _render_ready(name, info, user)
 
     # ── COMPLIANCE VALIDATED ──────────────────────
     if validated:
-        st.subheader(
-            f"🔵 Awaiting Technical Approval "
-            f"({len(validated)})")
+        _card_header(f"Awaiting Technical Approval ({len(validated)})", _ICON_SHIELD)
         for name, info in validated.items():
-            with st.expander(
-                f"🔵 **{name}** — "
-                f"{info['model_type']}"):
-                st.info(
-                    "→ Go to Technical Approval "
-                    "to approve this model first")
+            with st.expander(f"{name} — {info['model_type']}"):
+                _alert_box("INFO", "&rarr; Go to Technical Approval to approve this model first", _ICON_INFO)
 
     # ── DEPLOYED MODELS ───────────────────────────
     if deployed:
-        st.subheader(
-            f"📦 Deployed Models ({len(deployed)})")
+        _card_header(f"Deployed Models ({len(deployed)})", _ICON_MODEL)
         for name, info in deployed.items():
             _render_deployed(name, info, user)
 
     if not ready and not validated and not deployed:
-        st.info(
-            "No models in deployment pipeline.\n"
-            "Submit a model as Data Scientist first.")
+        _alert_box("INFO", "No models in deployment pipeline. Submit a model as Data Scientist first.", _ICON_INFO)
 
 
 def _build_candidates(mapping: dict, local_map: dict) -> dict:
@@ -187,16 +176,16 @@ def _run_deployment(info: dict, model_id: str, engineer: str):
     prog.progress(20)
     bc_status = _get_bc_status(model_id)
     if bc_status != "TECHNICAL_APPROVED":
-        st.error(f"🚫 ABORT — Required: TECHNICAL_APPROVED | Found: {bc_status}")
+        st.error(f"ABORT — Required: TECHNICAL_APPROVED | Found: {bc_status}")
         return
-    st.success("✅ Stage 1: TECHNICAL_APPROVED")
+    st.success("Stage 1: TECHNICAL_APPROVED")
     status.info("2️⃣ Retrieving model file...")
     prog.progress(40)
     model_path = info.get("local_path","")
     if not model_path:
-        st.error("🚫 Model path not found")
+        st.error("Model path not found")
         return
-    st.success(f"✅ Stage 2: `{model_path}`")
+    st.success(f"Stage 2: `{model_path}`")
     status.info("3️⃣ Computing SHA-256...")
     prog.progress(60)
     try:
@@ -204,9 +193,9 @@ def _run_deployment(info: dict, model_id: str, engineer: str):
             params={"path": model_path}, timeout=10)
         if r.status_code == 200:
             h = r.json().get("hash","")
-            st.success(f"✅ Stage 3: Hash `{h[:20]}...`")
+            st.success(f"Stage 3: Hash `{h[:20]}...`")
     except Exception as e:
-        st.warning(f"⚠️ Stage 3: {e}")
+        st.warning(f"Stage 3: {e}")
     prog.progress(75)
     status.info("4️⃣ Deploying to production...")
     prog.progress(85)
@@ -220,13 +209,13 @@ def _run_deployment(info: dict, model_id: str, engineer: str):
     prog.progress(100)
     status.empty()
     if api_r.get("success"):
-        st.success("🎉 Deployed successfully!")
+        st.success("Deployed successfully!")
         st.balloons()
         import time
         time.sleep(2)
         st.rerun()
     else:
-        st.error(f"❌ {api_r}")
+        st.error(f"{api_r}")
 
 
 def _render_ready(name: str, info: dict, user: dict):
@@ -235,7 +224,7 @@ def _render_ready(name: str, info: dict, user: dict):
     auc   = info["auc_roc"]
     f1    = info["f1"]
     with st.expander(
-        f"🟡 **{name}** — {mtype} — AUC:{auc:.4f} — TECHNICAL_APPROVED",
+        f"{name} — {mtype} — AUC:{auc:.4f} — TECHNICAL_APPROVED",
         expanded=True):
         c1,c2,c3,c4 = st.columns(4)
         c1.metric("AUC-ROC", f"{auc:.4f}")
@@ -244,20 +233,20 @@ def _render_ready(name: str, info: dict, user: dict):
         c4.metric("By",      info["submitted_by"])
         st.caption(f"BC ID: `{bc_id}`")
         if not info["local_found"]:
-            st.error(f"❌ Local model file not found for {mtype}")
+            _alert_box("ERROR", f"Local model file not found for {mtype}", _ICON_ERROR)
             return
         st.markdown("---")
-        st.markdown("**🔒 4-Stage Deployment Process**")
+        _card_header("4-Stage Deployment Process", _ICON_SHIELD)
         for num, title in [
-            ("1️⃣","Verify TECHNICAL_APPROVED in Fabric"),
-            ("2️⃣","Retrieve local model file"),
-            ("3️⃣","Recompute SHA-256 hash"),
-            ("4️⃣","Load into FastAPI production")]:
-            st.markdown(f"{num} {title}")
+            ("1.", "Verify TECHNICAL_APPROVED in Fabric"),
+            ("2.", "Retrieve local model file"),
+            ("3.", "Recompute SHA-256 hash"),
+            ("4.", "Load into FastAPI production")]:
+            st.markdown(f"**{num}** {title}")
         confirmed = st.text_input(
             "Confirm BC Model ID", bc_id,
             key=f"cid_{name}")
-        if st.button("🚀 Deploy to Production",
+        if st.button("Deploy to Production",
             key=f"dep_{name}", type="primary",
             use_container_width=True):
             _run_deployment(info, confirmed, user["username"])
@@ -271,59 +260,58 @@ def _render_deployed(name: str, info: dict, user: dict):
     is_active = info["is_active"]
     status_icon = "🟢" if is_active else "⚫"
     status_text = "ACTIVE" if is_active else "INACTIVE"
-    with st.expander(
-        f"{status_icon} **{name}** — {mtype} — AUC:{auc:.4f} — {status_text}"):
+    with st.expander(f"{name} — {mtype} — AUC:{auc:.4f} — {status_text}"):
         c1,c2,c3 = st.columns(3)
         c1.metric("AUC-ROC", f"{auc:.4f}")
         c2.metric("Status",  status_text)
-        c3.metric("Active", "🟢 YES" if is_active else "⚫ NO")
+        c3.metric("Active", "YES" if is_active else "NO")
         st.caption(f"BC ID: `{bc_id}` | Dataset: {info['dataset_id']}")
         st.markdown("---")
         if is_active:
-            st.success("🟢 This model is currently serving live fraud detection requests")
+            _alert_box("SUCCESS", "This model is currently serving live fraud detection requests", _ICON_CHECK)
             col1, col2 = st.columns(2)
             with col1:
-                if st.button("⏸️ Deactivate", key=f"deact_{name}",
+                if st.button("Deactivate", key=f"deact_{name}",
                     help="Stop this model but keep it available"):
                     with st.spinner("Deactivating..."):
                         r = httpx.post(f"{API_URL}/model/deactivate",
                             json={"model_id": bc_id}, timeout=10)
                         if r.status_code == 200:
-                            st.warning(f"⏸️ **{name}** deactivated")
+                            _alert_box("WARNING", f"**{name}** deactivated", _ICON_WARNING)
                             time.sleep(1)
                             st.rerun()
                         else:
                             st.error(f"❌ {r.text[:100]}")
             with col2:
-                st.button("🗑️ Revoke Permanently", key=f"rev_{name}",
+                st.button("Revoke Permanently", key=f"rev_{name}",
                     disabled=True,
                     help="Cannot revoke active model. Deactivate first.")
         else:
-            st.info("⚫ This model is deployed but not currently active")
+            _alert_box("INFO", "This model is deployed but not currently active", _ICON_INFO)
             col1, col2 = st.columns(2)
             with col1:
                 if info["local_found"]:
-                    if st.button("▶️ Activate", key=f"act_{name}",
+                    if st.button("Activate", key=f"act_{name}",
                         type="primary"):
                         with st.spinner("Activating..."):
                             r = deploy_model(bc_id, info["local_path"])
                             if r.get("success"):
-                                st.success(f"✅ **{name}** is now active!")
+                                _alert_box("SUCCESS", f"**{name}** is now active!", _ICON_CHECK)
                                 time.sleep(1)
                                 st.rerun()
                             else:
-                                st.error(f"❌ {r}")
+                                _alert_box("ERROR", str(r), _ICON_ERROR)
                 else:
-                    st.error("❌ Local file not found")
+                    _alert_box("ERROR", "Local file not found", _ICON_ERROR)
             with col2:
-                show_revoke = st.checkbox("🗑️ Revoke Permanently",
+                show_revoke = st.checkbox("Revoke Permanently",
                     key=f"show_rev_{name}")
                 if show_revoke:
-                    st.error("⚠️ This action is IRREVERSIBLE")
+                    _alert_box("ERROR", "This action is IRREVERSIBLE", _ICON_ERROR)
                     reason = st.text_area("Reason for permanent revocation",
                         key=f"rev_reason_{name}",
                         placeholder="e.g. Model replaced by better version...")
-                    if st.button("🗑️ Confirm Permanent Revocation",
+                    if st.button("Confirm Permanent Revocation",
                         key=f"rev_confirm_{name}", type="primary"):
                         if len(reason) < 20:
                             st.error("Please provide a reason (min 20 chars)")
@@ -336,8 +324,8 @@ def _render_deployed(name: str, info: dict, user: dict):
                                     f"{datetime.utcnow().isoformat()}")
                                 r2 = revoke_model(bc_id, full_reason)
                                 if r2.get("success"):
-                                    st.error(f"🗑️ **{name}** permanently revoked")
+                                    _alert_box("ERROR", f"**{name}** permanently revoked", _ICON_ERROR)
                                     time.sleep(2)
                                     st.rerun()
                                 else:
-                                    st.error(f"❌ {r2.get('output',r2.get('error'))}")
+                                    _alert_box("ERROR", r2.get('output',r2.get('error')), _ICON_ERROR)

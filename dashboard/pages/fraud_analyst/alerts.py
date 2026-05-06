@@ -4,6 +4,10 @@ import pika
 import json
 import httpx
 from utils.api_client import API_URL
+from styles import (
+    _header, _alert_box,
+    _ICON_WARNING, _ICON_SUCCESS, _ICON_INFO, _ICON_ERROR, _ICON_SHIELD
+)
 
 RABBIT_HOST = "rabbitmq"
 
@@ -58,8 +62,8 @@ def _validate(tx_id: str, decision: str, reason: str) -> bool:
         return False
 
 def show(user: dict):
-    st.title("🚨 Amber Zone Alerts")
-    st.caption("Transactions requiring human review — score between 0.40 and 0.80")
+    _header("Amber Zone Alerts", _ICON_WARNING)
+    st.markdown("<p style='color:#64748B; margin-top:-10px; margin-bottom:20px;'>Transactions requiring human review — score between 0.40 and 0.80</p>", unsafe_allow_html=True)
 
     # Track validated tx in session
     if "validated_txs" not in st.session_state:
@@ -67,13 +71,13 @@ def show(user: dict):
 
     count = _get_count()
     if count == 0 and not st.session_state.get("current_alerts"):
-        st.success("✅ No pending amber alerts!")
+        _alert_box("SUCCESS", "No pending amber alerts!", _ICON_SUCCESS)
         return
 
-    st.error(f"⚠️ **{count} transaction(s)** remaining in queue")
+    _alert_box("WARNING", f"**{count} transaction(s)** remaining in queue", _ICON_WARNING)
 
     # Load new alerts if needed
-    if "current_alerts" not in st.session_state or st.button("🔄 Load Next Alerts"):
+    if "current_alerts" not in st.session_state or st.button("Load Next Alerts"):
         alerts = _get_alerts(limit=5)
         st.session_state.current_alerts = [
             a for a in alerts 
@@ -84,7 +88,7 @@ def show(user: dict):
     pending = [a for a in alerts if a.get("tx_id") not in st.session_state.validated_txs]
 
     if not pending:
-        st.info("All loaded alerts processed. Click 'Load Next Alerts' for more.")
+        _alert_box("INFO", "All loaded alerts processed. Click 'Load Next Alerts' for more.", _ICON_INFO)
         st.session_state.current_alerts = []
         return
 
@@ -96,12 +100,12 @@ def show(user: dict):
         ts       = alert.get("timestamp", "")[:16]
 
         with st.expander(
-            f"🟡 **{tx_id}** — Score: {score:.4f} — {amount:,.0f} MAD — {ts}",
+            f"{tx_id} — Score: {score:.4f} — {amount:,.0f} MAD — {ts}",
             expanded=True):
 
             c1, c2 = st.columns(2)
-            c1.metric("🎯 Score", f"{score:.4f}")
-            c2.metric("💰 Amount", f"{amount:,.0f} MAD")
+            c1.metric("Score", f"{score:.4f}")
+            c2.metric("Amount", f"{amount:,.0f} MAD")
 
             if top_feat:
                 st.markdown("**🔍 Why flagged (SHAP):**")
@@ -122,27 +126,27 @@ def show(user: dict):
 
             col1, col2 = st.columns(2)
             with col1:
-                if st.button("🔴 Confirm FRAUD",
+                if st.button("Confirm FRAUD",
                     key=f"fraud_{tx_id}",
                     type="primary",
                     use_container_width=True):
                     if len(reason) < 10:
-                        st.error("⚠️ Min 10 chars required")
+                        _alert_box("WARNING", "Min 10 chars required", _ICON_WARNING)
                     else:
                         if _validate(tx_id, "FRAUDE", reason):
                             st.session_state.validated_txs.add(tx_id)
-                            st.error(f"🔴 **{tx_id}** → FRAUD confirmed!")
+                            _alert_box("ERROR", f"**{tx_id}** &rarr; FRAUD confirmed!", _ICON_ERROR)
                             import time; time.sleep(1)
                             st.rerun()
             with col2:
-                if st.button("🟢 Mark LEGITIMATE",
+                if st.button("Mark LEGITIMATE",
                     key=f"legit_{tx_id}",
                     use_container_width=True):
                     if len(reason) < 10:
-                        st.error("⚠️ Min 10 chars required")
+                        _alert_box("WARNING", "Min 10 chars required", _ICON_WARNING)
                     else:
                         if _validate(tx_id, "LEGITIME", reason):
                             st.session_state.validated_txs.add(tx_id)
-                            st.success(f"🟢 **{tx_id}** → LEGITIMATE confirmed!")
+                            _alert_box("SUCCESS", f"**{tx_id}** &rarr; LEGITIMATE confirmed!", _ICON_SUCCESS)
                             import time; time.sleep(1)
                             st.rerun()

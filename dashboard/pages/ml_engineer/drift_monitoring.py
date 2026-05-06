@@ -2,31 +2,31 @@
 import streamlit as st
 import pandas as pd
 from utils.api_client import get_drift_latest
+from styles import (
+    _header, _card_header, _alert_box,
+    _ICON_CHART, _ICON_WARNING, _ICON_ERROR, _ICON_SUCCESS, _ICON_INFO
+)
 
 def show(user: dict):
-    st.title("📉 Drift Monitoring — Evidently AI")
+    _header("Drift Monitoring — Evidently AI", _ICON_CHART)
 
     c1,c2 = st.columns([3,1])
     with c2:
-        if st.button("🔄 Refresh"):
+        if st.button("Refresh"):
             st.rerun()
 
     d = get_drift_latest()
     if not d or d.get("status") == "no_data":
-        st.warning("No drift report available yet.")
+        _alert_box("WARNING", "No drift report available yet.", _ICON_WARNING)
         return
 
     sh = d.get("drift_share",0)
     if sh > 0.30:
-        st.error(
-            "🔴 CRITICAL DRIFT — "
-            "Immediate retraining required!")
+        _alert_box("ERROR", "CRITICAL DRIFT — Immediate retraining required!", _ICON_ERROR)
     elif sh > 0.15:
-        st.warning(
-            "🟡 DRIFT DETECTED — "
-            "Close monitoring required")
+        _alert_box("WARNING", "DRIFT DETECTED — Close monitoring required", _ICON_WARNING)
     else:
-        st.success("🟢 No significant drift detected")
+        _alert_box("SUCCESS", "No significant drift detected", _ICON_SUCCESS)
 
     c1,c2,c3,c4 = st.columns(4)
     c1.metric("Drift Share", f"{sh:.2%}")
@@ -40,7 +40,7 @@ def show(user: dict):
         f"{d.get('auc_degradation',0):.4f}")
 
     if d.get("drifted_features"):
-        st.subheader("Drifted Features")
+        _card_header("Drifted Features", _ICON_INFO)
         st.dataframe(
             pd.DataFrame(d["drifted_features"]),
             use_container_width=True)

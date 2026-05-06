@@ -15,6 +15,10 @@ from utils.api_client import (
     get_models_info, API_URL, ML_URL
 )
 from utils.model_registry import get_mlflow_bc_mapping
+from styles import (
+    _header, _card_header, _alert_box,
+    _ICON_MODEL, _ICON_PENDING, _ICON_CHECK, _ICON_WARNING, _ICON_ERROR, _ICON_INFO, _ICON_SHIELD
+)
 
 REJECT_CATEGORIES = [
     "Performance > 100ms — Too slow for production",
@@ -30,17 +34,7 @@ REJECT_CATEGORIES = [
 ]
 
 def show(user: dict):
-    st.title("🔧 Technical Approval")
-    st.markdown("""
-    <div style="background:#EFF6FF;border-left:4px solid #003366;
-                border-radius:8px;padding:1rem;margin-bottom:1rem;">
-        <b>Validation Flow:</b><br/>
-        1️⃣ Compliance Officer validates regulations first<br/>
-        2️⃣ ML Engineer approves technically (you are here)<br/>
-        3️⃣ ML Engineer deploys to production
-    </div>
-    """, unsafe_allow_html=True)
-
+    _header("Technical Approval", _ICON_MODEL)
     local_models = get_models_info()
     local_map    = {m["name"]: m for m in local_models}
 
@@ -63,30 +57,22 @@ def show(user: dict):
 
     # ── PENDING — needs ML Engineer action ───────
     if pending:
-        st.subheader(
-            f"⏳ Ready for Technical Approval "
-            f"({len(pending)})")
-        st.info(
-            "These models passed Compliance Officer "
-            "validation and need your technical review.")
+        _card_header(f"Ready for Technical Approval ({len(pending)})", _ICON_PENDING)
+        _alert_box("INFO", "These models passed Compliance Officer validation and need your technical review.", _ICON_INFO)
         for name, info in pending.items():
             _render_model_card(
                 name, info, local_map, user, "pending")
     else:
-        st.success(
-            "✅ No models pending technical review")
+        _alert_box("SUCCESS", "No models pending technical review", _ICON_CHECK)
 
     if approved:
-        st.subheader(
-            f"✅ Technically Approved — "
-            f"Ready for Deployment ({len(approved)})")
+        _card_header(f"Technically Approved — Ready for Deployment ({len(approved)})", _ICON_CHECK)
         for name, info in approved.items():
             _render_model_card(
                 name, info, local_map, user, "approved")
 
     if others:
-        with st.expander(
-            f"📋 Other Models ({len(others)})"):
+        with st.expander(f"Other Models ({len(others)})"):
             for name, info in others.items():
                 if info["on_chain"]:
                     st.markdown(
@@ -113,8 +99,7 @@ def _render_model_card(name: str,
     ok        = auc>=0.95 and f1>=0.85 and rec>=0.90
 
     with st.expander(
-        f"**{name}** — {mid} "
-        f"— {mtype} — {bc_status}",
+        f"{name} — {mid} — {mtype} — {bc_status}",
         expanded=(mode=="pending")):
 
         # ── Metrics ──────────────────────────────
@@ -136,7 +121,7 @@ def _render_model_card(name: str,
                   {auc:.4f}</div>
               <div style="font-size:.7rem;
                   color:{'#16A34A' if auc>=0.95 else '#DC2626'};">
-                  {'✅ ≥0.95' if auc>=0.95 else '❌ <0.95'}</div>
+                  {'Target ≥0.95 met' if auc>=0.95 else 'Requires ≥0.95'}</div>
             </div>
             <div>
               <div style="font-size:.7rem;color:#64748B;
@@ -147,7 +132,7 @@ def _render_model_card(name: str,
                   {f1:.4f}</div>
               <div style="font-size:.7rem;
                   color:{'#16A34A' if f1>=0.85 else '#DC2626'};">
-                  {'✅ ≥0.85' if f1>=0.85 else '❌ <0.85'}</div>
+                  {'Target ≥0.85 met' if f1>=0.85 else 'Requires ≥0.85'}</div>
             </div>
             <div>
               <div style="font-size:.7rem;color:#64748B;
@@ -158,7 +143,7 @@ def _render_model_card(name: str,
                   {rec:.4f}</div>
               <div style="font-size:.7rem;
                   color:{'#16A34A' if rec>=0.90 else '#DC2626'};">
-                  {'✅ ≥0.90' if rec>=0.90 else '❌ <0.90'}</div>
+                  {'Target ≥0.90 met' if rec>=0.90 else 'Requires ≥0.90'}</div>
             </div>
             <div>
               <div style="font-size:.7rem;color:#64748B;
@@ -172,35 +157,31 @@ def _render_model_card(name: str,
           <div style="font-size:.8rem;color:#64748B;
               padding-top:.6rem;
               border-top:1px solid #E2E8F0;">
-            📊 Dataset: <b>{did}</b> &nbsp;|&nbsp;
-            👤 Submitted by: <b>{subby}</b> &nbsp;|&nbsp;
-            🔐 Hash: <code>{mhash[:25]}...</code>
+            Dataset: <b>{did}</b> &nbsp;|&nbsp;
+            Submitted by: <b>{subby}</b> &nbsp;|&nbsp;
+            Hash: <code>{mhash[:25]}...</code>
           </div>
         </div>
         """, unsafe_allow_html=True)
 
         if mode == "pending":
             # ── Technical Tests ───────────────────
-            st.subheader("🔍 Technical Verification")
+            _card_header("Technical Verification", _ICON_MODEL)
             c1, c2 = st.columns(2)
 
             with c1:
-                st.markdown("**⏱️ Performance Test**")
+                st.markdown("**Performance Test**")
                 if st.button("Run Test",
                     key=f"perf_{name}"):
                     with st.spinner("Testing..."):
                         perf = _test_performance()
                         if perf["avg_ms"] < 100:
-                            st.success(
-                                f"✅ {perf['avg_ms']:.1f}ms"
-                                f" < 100ms")
+                            _alert_box("SUCCESS", f"{perf['avg_ms']:.1f}ms < 100ms", _ICON_CHECK)
                         else:
-                            st.error(
-                                f"❌ {perf['avg_ms']:.1f}ms"
-                                f" > 100ms")
+                            _alert_box("ERROR", f"{perf['avg_ms']:.1f}ms > 100ms", _ICON_ERROR)
 
             with c2:
-                st.markdown("**🔐 Hash Verification**")
+                st.markdown("**Hash Verification**")
                 if st.button("Verify Hash",
                     key=f"hash_{name}"):
                     with st.spinner("Verifying..."):
@@ -220,16 +201,14 @@ def _render_model_card(name: str,
                                 st.caption(
                                     f"Actual: `{actual[:20]}...`")
                                 if actual == mhash:
-                                    st.success(
-                                        "✅ Integrity confirmed")
+                                    _alert_box("SUCCESS", "Integrity confirmed", _ICON_CHECK)
                                 else:
-                                    st.warning(
-                                        "ℹ️ New version — hash updated from MLflow")
+                                    _alert_box("WARNING", "New version — hash updated from MLflow", _ICON_WARNING)
                             except Exception as e:
                                 st.warning(f"⚠️ {e}")
 
             # Technical checklist
-            st.markdown("**✅ Technical Checklist**")
+            _card_header("Technical Checklist", _ICON_SHIELD)
             checks = [
                 ("17 features compatible", True),
                 ("SHAP TreeExplainer compatible",
@@ -248,11 +227,12 @@ def _render_model_card(name: str,
             for i, (label, passed) in enumerate(checks):
                 with cols[i % 3]:
                     st.markdown(
-                        f"{'✅' if passed else '⚠️'} "
-                        f"{label}")
+                        f"<span style='color:{'#16A34A' if passed else '#DC2626'};font-weight:bold;'>"
+                        f"{'✓' if passed else '✗'}</span> "
+                        f"{label}", unsafe_allow_html=True)
 
             # Global SHAP
-            st.subheader("📊 Global SHAP Review")
+            _card_header("Global SHAP Review", _ICON_MODEL)
             if st.button("Load Global SHAP",
                 key=f"shap_{name}"):
                 with st.spinner("Loading..."):
@@ -262,47 +242,33 @@ def _render_model_card(name: str,
                     if shap_r:
                         _display_shap_compact(shap_r)
                     else:
-                        st.info(
-                            "No SHAP cached. "
-                            "Ask Data Scientist to "
-                            "compute it first.")
+                        _alert_box("INFO", "No SHAP cached. Ask Data Scientist to compute it first.", _ICON_INFO)
 
             # ── Decision ─────────────────────────
-            st.subheader("🎯 Technical Decision")
+            _card_header("Technical Decision", _ICON_CHECK)
             st.caption(
                 "Your decision will be recorded "
                 "on Hyperledger Fabric blockchain "
                 "with your identity.")
 
             tab_approve, tab_reject = st.tabs([
-                "✅ Approve", "❌ Reject"])
+                "Approve", "Reject"])
 
             # APPROVE TAB
             with tab_approve:
                 if not ok:
-                    st.error(
-                        "❌ Cannot approve — "
-                        "Metrics below thresholds:\n" +
-                        "\n".join([
-                            f"- AUC-ROC {auc:.4f} < 0.95"
-                            if auc < 0.95 else "",
-                            f"- F1 {f1:.4f} < 0.85"
-                            if f1 < 0.85 else "",
-                            f"- Recall {rec:.4f} < 0.90"
-                            if rec < 0.90 else ""
-                        ]).strip())
+                    _alert_box("ERROR", "Cannot approve — Metrics below thresholds:<br/>" +
+                        "<br/>".join([
+                            f"&bull; AUC-ROC {auc:.4f} &lt; 0.95" if auc < 0.95 else "",
+                            f"&bull; F1 {f1:.4f} &lt; 0.85" if f1 < 0.85 else "",
+                            f"&bull; Recall {rec:.4f} &lt; 0.90" if rec < 0.90 else ""
+                        ]).strip(), _ICON_ERROR)
                 else:
-                    st.success(
-                        "✅ All thresholds met — "
-                        "Model ready for technical approval")
-                    st.info(
-                        "After your approval:\n"
-                        "→ Compliance Officer will validate "
-                        "regulatory compliance\n"
-                        "→ Then you can deploy to production")
+                    _alert_box("SUCCESS", "All thresholds met — Model ready for technical approval", _ICON_CHECK)
+                    _alert_box("INFO", "After your approval:<br/>&rarr; Compliance Officer will validate regulatory compliance<br/>&rarr; Then you can deploy to production", _ICON_INFO)
 
                     if st.button(
-                        "✅ Approve Technically",
+                        "Approve Technically",
                         key=f"app_{name}",
                         type="primary",
                         use_container_width=True):
@@ -315,26 +281,16 @@ def _render_model_card(name: str,
                                     user["username"],
                                     info.get("metrics",{}),
                                     info.get("params",{}))
-                                st.success(
-                                    f"✅ **{mid}** "
-                                    f"technically approved!")
-                                st.info(
-                                    "→ Go to Deployment "
-                                    "page to deploy "
-                                    "this model to production")
+                                _alert_box("SUCCESS", f"**{mid}** technically approved!", _ICON_CHECK)
+                                _alert_box("INFO", "&rarr; Go to Deployment page to deploy this model to production", _ICON_INFO)
                                 time.sleep(2)
                                 st.rerun()
                             else:
-                                st.error(
-                                    f"❌ {result.get('output',result.get('error'))}")
+                                _alert_box("ERROR", result.get('output',result.get('error')), _ICON_ERROR)
 
             # REJECT TAB
             with tab_reject:
-                st.warning(
-                    "Rejection requires a written "
-                    "technical report. This will be "
-                    "recorded on blockchain and sent "
-                    "to the Data Scientist.")
+                _alert_box("WARNING", "Rejection requires a written technical report. This will be recorded on blockchain and sent to the Data Scientist.", _ICON_WARNING)
 
                 with st.form(
                     key=f"reject_{name}"):
@@ -379,15 +335,13 @@ def _render_model_card(name: str,
                         value="Moderate")
 
                     submitted = st.form_submit_button(
-                        "❌ Submit Rejection",
+                        "Submit Rejection",
                         type="primary",
                         use_container_width=True)
 
                 if submitted:
                     if len(justification) < 50:
-                        st.error(
-                            "❌ Please provide at least "
-                            "50 characters of justification.")
+                        _alert_box("ERROR", "Please provide at least 50 characters of justification.", _ICON_ERROR)
                     else:
                         full_reason = (
                             f"[{severity}] "
@@ -410,10 +364,7 @@ def _render_model_card(name: str,
                                     justification,
                                     recommended_action,
                                     severity, info)
-                                st.error(
-                                    f"❌ **{mid}** "
-                                    f"rejected — "
-                                    f"recorded on blockchain")
+                                _alert_box("ERROR", f"**{mid}** rejected — recorded on blockchain", _ICON_ERROR)
                                 st.markdown(f"""
                                 <div style="background:#FEF2F2;
                                     border:1px solid #FECACA;
@@ -432,16 +383,11 @@ def _render_model_card(name: str,
                                 time.sleep(2)
                                 st.rerun()
                             else:
-                                st.error(
-                                    f"❌ {result2.get('output',result2.get('error'))}")
+                                _alert_box("ERROR", result2.get('output',result2.get('error')), _ICON_ERROR)
 
         elif mode == "approved":
-            st.success(
-                "✅ Technically approved — "
-                "Ready for deployment!")
-            st.info(
-                "→ Go to Deployment page to deploy "
-                "this model to production")
+            _alert_box("SUCCESS", "Technically approved — Ready for deployment!", _ICON_CHECK)
+            _alert_box("INFO", "&rarr; Go to Deployment page to deploy this model to production", _ICON_INFO)
 
 
 # ── Helper functions ─────────────────────────────────
@@ -628,12 +574,9 @@ def _display_shap_compact(result: dict):
     biased = [f for f in imp[:5]
               if f["feature"] in sensitive]
     if biased:
-        st.warning(
-            f"⚠️ Sensitive features in top 5: "
-            f"{[b['feature'] for b in biased]}")
+        _alert_box("WARNING", f"Sensitive features in top 5: {[b['feature'] for b in biased]}", _ICON_WARNING)
     else:
-        st.success(
-            "✅ No discriminatory features detected")
+        _alert_box("SUCCESS", "No discriminatory features detected", _ICON_CHECK)
 
 
 def _pin_approval_report(model_id: str,

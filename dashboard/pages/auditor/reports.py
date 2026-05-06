@@ -3,6 +3,10 @@ import streamlit as st
 import httpx
 from datetime import datetime
 from utils.api_client import API_URL
+from styles import (
+    _header, _card_header, _alert_box,
+    _ICON_HISTORY, _ICON_INFO, _ICON_CHECK, _ICON_WARNING, _ICON_ERROR, _ICON_CHART, _ICON_SHIELD
+)
 
 TIMEOUT = 30
 
@@ -90,10 +94,9 @@ def _build_report(report_type, period, user):
     return base
 
 def show(user: dict):
-    st.title("📄 Compliance Reports")
-    st.caption("Internal Auditor — Generate & Submit Reports to CNDP")
+    _header("Compliance Reports", _ICON_HISTORY)
 
-    st.subheader("📋 Generate New Report")
+    _card_header("Generate New Report", _ICON_HISTORY)
     col1, col2 = st.columns(2)
     with col1:
         report_type = st.selectbox("Report Type", [
@@ -105,7 +108,7 @@ def show(user: dict):
     with col2:
         period = st.text_input("Period", datetime.utcnow().strftime("%Y-%m"))
 
-    if st.button("📄 Generate & Pin to IPFS", type="primary", use_container_width=True):
+    if st.button("Generate & Pin to IPFS", type="primary", use_container_width=True):
         with st.spinner("Generating report..."):
             report = _build_report(report_type, period, user)
             try:
@@ -116,29 +119,31 @@ def show(user: dict):
                 if r.status_code == 200:
                     cid     = r.json().get("cid", "")
                     storage = r.json().get("storage", "ipfs")
-                    st.success("✅ Report generated and pinned!")
-                    st.info(f"📌 **CID:** `{cid}` | {'📦 Redis' if 'redis' in storage else '🌐 IPFS'}")
+                    url = r.json().get("url", f"https://gateway.pinata.cloud/ipfs/{cid}")
+                    _alert_box("SUCCESS", f"Report pinned on IPFS!", _ICON_CHECK)
+                    st.markdown(f"**CID:** `{cid}`")
+                    st.markdown(f"[View on IPFS]({url})")
                     c = report.get("content", {})
                     st.markdown("---")
-                    st.subheader("📊 Report Summary")
+                    _card_header("Report Summary", _ICON_CHART)
                     cols = st.columns(4)
                     items = list(c.items())[:4]
                     for i, (k, v) in enumerate(items):
                         cols[i].metric(k.replace("_"," ").title(), str(v)[:15])
-                    st.info(f"**Report:** {report_type} | **Period:** {period} | **Status:** ⏳ Pending External Certification")
-                    st.warning("⚠️ **Next Step:** External Auditor must certify this report before submission to Regulator.")
+                    st.caption(f"Report: {report_type} | Period: {period} | Status: Pending External Certification")
+                    _alert_box("WARNING", "Next Step: External Auditor must certify this report before submission to Regulator.", _ICON_WARNING)
                 else:
-                    st.error(f"❌ Failed: {r.text}")
+                    _alert_box("ERROR", f"Failed: {r.text}", _ICON_ERROR)
             except Exception as e:
-                st.error(f"❌ {e}")
+                _alert_box("ERROR", str(e), _ICON_ERROR)
 
     st.markdown("---")
-    st.subheader("📁 Pinned Reports on IPFS")
+    _card_header("Pinned Reports on IPFS", _ICON_HISTORY)
 
     if "loaded_reports" not in st.session_state:
         st.session_state.loaded_reports = []
 
-    if st.button("🔄 Load Reports"):
+    if st.button("Load Reports"):
         try:
             r = httpx.get(f"{API_URL}/ipfs/list", timeout=30)
             if r.status_code == 200:
@@ -150,12 +155,12 @@ def show(user: dict):
 
     reports = st.session_state.loaded_reports
     if reports:
-        st.success(f"✅ {len(reports)} report(s) found")
+        _alert_box("SUCCESS", f"{len(reports)} report(s) found", _ICON_CHECK)
         for rep in reports:
             cid     = rep.get("cid", "")
             name    = rep.get("name", "")
-            storage = "📦 Redis" if cid.startswith("LOCAL-") else "🌐 IPFS"
-            with st.expander(f"📄 **{name}** — {storage}", expanded=False):
+            storage = "Redis" if cid.startswith("LOCAL-") else "IPFS"
+            with st.expander(f"**{name}** — {storage}", expanded=False):
                 st.markdown(f"**CID:** `{cid}`")
                 try:
                     rr = httpx.get(f"{API_URL}/ipfs/get/{cid}", timeout=10)
@@ -165,7 +170,7 @@ def show(user: dict):
                         c1.metric("Type",   data.get("report_type","").split()[0])
                         c2.metric("Period", data.get("period",""))
                         c3.metric("By",     data.get("generated_by","")[:15])
-                        st.markdown(f"**Generated:** {data.get('generated_at','')[:16]} | **Status:** ⏳ Pending")
+                        st.markdown(f"**Generated:** {data.get('generated_at','')[:16]} | **Status:** Pending")
                         content_data = data.get("content", {})
                         if isinstance(content_data, dict):
                             st.markdown("---")

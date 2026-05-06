@@ -58,3 +58,8 @@ echo "  Pour démarrer Kafka streaming:"
 echo "  cd ~/fraud-governance-system"
 echo "  docker compose up -d zookeeper kafka kafka-ui transaction-producer fraud-consumer"
 echo "============================================"
+
+# Installer pika dans l'API (manquant dans l'image)
+echo "Installation de pika dans l'API..."
+docker exec fraud-governance-system-api-1 pip install pika --quiet 2>/dev/null || true
+echo "pika OK"

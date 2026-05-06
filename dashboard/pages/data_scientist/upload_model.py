@@ -14,6 +14,54 @@ from utils.api_client import (
     get_datasets, GW_URL, ML_URL, API_URL
 )
 
+# --- SVG Icons ---
+_ICON_BRAIN = '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1F7A5A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>'
+_ICON_SUCCESS = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>'
+_ICON_WARNING = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>'
+_ICON_ERROR = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>'
+_ICON_CHART = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1F7A5A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>'
+_ICON_SHIELD = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1F7A5A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>'
+_ICON_UPLOAD = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1F7A5A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>'
+_ICON_DATABASE = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1F7A5A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>'
+_ICON_PACKAGE = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1F7A5A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>'
+
+
+def _header(title: str, subtitle: str, icon_svg: str):
+    st.markdown(f"""
+        <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid #E5E7EB;">
+            <div style="width:48px;height:48px;background:#F0FAF6;border-radius:12px;display:flex;align-items:center;justify-content:center;">
+                {icon_svg}
+            </div>
+            <div>
+                <h1 style="margin:0;padding:0;font-size:1.6rem;color:#111827;font-weight:700;">{title}</h1>
+                <p style="margin:0;padding:0;color:#6B7280;font-size:0.9rem;">{subtitle}</p>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+def _card_header(title: str, icon_svg: str):
+    st.markdown(f"""
+        <div style="display:flex;align-items:center;gap:0.5rem;margin:1.5rem 0 0.8rem 0;">
+            <div style="display:flex;align-items:center;justify-content:center;">{icon_svg}</div>
+            <h3 style="margin:0;padding:0;font-size:1.1rem;color:#111827;font-weight:600;">{title}</h3>
+        </div>
+    """, unsafe_allow_html=True)
+
+def _alert_box(text: str, alert_type="info"):
+    colors = {
+        "success": ("#ECFDF5", "#10B981", "#065F46", _ICON_SUCCESS),
+        "warning": ("#FFFBEB", "#F59E0B", "#92400E", _ICON_WARNING),
+        "error":   ("#FEF2F2", "#EF4444", "#991B1B", _ICON_ERROR),
+        "info":    ("#EFF6FF", "#3B82F6", "#1E40AF", _ICON_SUCCESS) # Using success icon or we can make an info one
+    }
+    bg, border, text_color, icon = colors.get(alert_type, colors["info"])
+    st.markdown(f"""
+        <div style="padding:1rem;background-color:{bg};border-left:4px solid {border};border-radius:0.5rem;display:flex;align-items:flex-start;gap:0.75rem;margin-bottom:1rem;">
+            <div style="margin-top:2px;">{icon}</div>
+            <div style="color:{text_color};font-weight:500;">{text}</div>
+        </div>
+    """, unsafe_allow_html=True)
+
 
 def _mlflow_dict(lst) -> dict:
     """Convert MLflow metrics/params list to dict"""
@@ -71,7 +119,6 @@ def _fetch_metrics_from_mlflow(run_name: str) -> dict:
                     metrics = _mlflow_dict(data.get("metrics", []))
                     params  = _mlflow_params(data.get("params", []))
                     if metrics.get("auc_roc", 0) > 0:
-                        # Garder le meilleur run (AUC max)
                         candidate = {
                             "found":     True,
                             "run_id":    info["run_id"],
@@ -194,17 +241,18 @@ def _get_dataset_sample(dataset_id, n=500):
         print(f"Sample error: {e}")
     return None
 
+
 def show(user: dict):
-    st.title("📤 Model Upload & Registration")
-    st.info(
-        "Workflow: Upload .pkl → Auto-detect → "
-        "MLflow metrics → Policy PR-005 → "
-        "Global SHAP → IPFS → Blockchain")
+    _header(
+        "Model Registration",
+        "Workflow: Upload .pkl → Auto-detect → MLflow metrics → Policy PR-005 → Global SHAP → IPFS → Blockchain",
+        _ICON_BRAIN
+    )
 
     datasets = get_datasets()
 
     with st.form("upload_model_form"):
-        st.subheader("1️⃣ Model File")
+        _card_header("Model File", _ICON_UPLOAD)
         c1, c2 = st.columns(2)
         with c1:
             mfile = st.file_uploader(
@@ -218,17 +266,18 @@ def show(user: dict):
                 "Description",
                 "Describe your model...")
 
-        st.subheader("2️⃣ Performance Metrics")
+        _card_header("Performance Metrics", _ICON_CHART)
         st.caption(
             "Policy PR-005: "
-            "AUC-ROC ≥ 0.95 | F1 ≥ 0.85 | Recall ≥ 0.90")
-        st.info("🔄 Metrics will be automatically computed by evaluating the model on test data after upload.")
+            "AUC-ROC >= 0.95 | F1 >= 0.85 | Recall >= 0.90")
+        st.info("Metrics will be automatically computed by evaluating the model on test data after upload.")
         auc = apr = f1 = prec = rec = 0.0
         ntr = nte = 0
         trt = 0.0
         auto_fetch = True
 
-        st.subheader("3️⃣ Training Dataset")
+        # Dataset selector dans le form — juste avant Submit
+        _card_header("Training Dataset", _ICON_DATABASE)
         if datasets:
             opts = {
                 f"{d['dataset_id']} "
@@ -236,14 +285,15 @@ def show(user: dict):
                 f"Q:{d.get('quality_score',0)}/100)": d
                 for d in datasets}
             sel_lbl = st.selectbox(
-                "Select Dataset", list(opts.keys()))
+                "Select Dataset", list(opts.keys()),
+                key="selected_dataset")
             sel_ds  = opts[sel_lbl]
             dh      = sel_ds.get("hash","")
             did     = sel_ds.get("dataset_id","")
             dcid    = sel_ds.get("card_cid","")
-            st.code(
-                f"Dataset : {did}\n"
-                f"Hash    : {dh[:40]}...")
+            # Afficher le dataset réellement sélectionné
+            selected_did = sel_lbl.split(" (")[0]
+            selected_ds_data = opts[sel_lbl]
         else:
             st.warning(
                 "No datasets registered. "
@@ -252,7 +302,7 @@ def show(user: dict):
             sel_ds = {}
 
         sub = st.form_submit_button(
-            "🚀 Submit Model", type="primary")
+            "Submit Model", type="primary")
 
     if sub and mfile:
         _process(mfile, mname, ver, desc,
@@ -261,7 +311,7 @@ def show(user: dict):
                  dh, did, dcid,
                  user["username"], auto_fetch)
     elif sub:
-        st.warning("Please upload a .pkl file")
+        _alert_box("Please upload a .pkl file", "warning")
 
     _show_models()
 
@@ -286,11 +336,11 @@ def _process(mfile, mname, ver, desc,
 
     try:
         # STEP 1 — Load model
-        status.info("⏳ Step 1/7 — Loading model...")
+        status.info("Step 1/7 — Loading model...")
         prog.progress(10)
         load_r = _load_model(content, tmp_path)
         if not load_r["success"]:
-            st.error(f"❌ {load_r.get('error')}")
+            _alert_box(str(load_r.get('error')), "error")
             return
 
         model      = load_r["model"]
@@ -299,9 +349,8 @@ def _process(mfile, mname, ver, desc,
         shap_type  = load_r["shap_explainer"]
 
         if load_r.get("auto_installed"):
-            st.success(
-                f"✅ Auto-installed: "
-                f"{load_r.get('installed_package')}")
+            _alert_box(
+                f"Auto-installed: {load_r.get('installed_package')}", "success")
 
         c1,c2,c3 = st.columns(3)
         c1.metric("Model Type",  model_type)
@@ -310,12 +359,11 @@ def _process(mfile, mname, ver, desc,
         st.code(f"Model Hash: {mhash}")
 
         # STEP 2 — Auto-fetch MLflow metrics
-        status.info("⏳ Step 2/7 — MLflow metrics...")
+        status.info("Step 2/7 — MLflow metrics...")
         prog.progress(20)
         run_id = ""
 
         if auto_fetch:
-            # 1. Try MLflow first by run_name = BC ID
             bc_id = f"{mname}-v{ver}"
             mlf = _fetch_metrics_from_mlflow(bc_id)
             if mlf.get("found"):
@@ -327,15 +375,14 @@ def _process(mfile, mname, ver, desc,
                 ntr   = mlf["n_train"]
                 nte   = mlf["n_test"]
                 run_id = mlf["run_id"]
-                st.success(f"✅ Metrics fetched from MLflow ({bc_id})")
+                _alert_box(f"Metrics fetched from MLflow ({bc_id})", "success")
                 c1,c2,c3,c4 = st.columns(4)
                 c1.metric("AUC-ROC", f"{auc:.4f}")
                 c2.metric("F1",      f"{f1:.4f}")
                 c3.metric("Recall",  f"{rec:.4f}")
                 c4.metric("Precision",f"{prec:.4f}")
             else:
-                # 2. Fallback: evaluate pkl with selected dataset
-                st.info("⏳ Not found in MLflow — evaluating model on dataset...")
+                status.info("Not found in MLflow — evaluating model on dataset...")
                 eval_r = evaluate_model_metrics(tmp_path, dataset_id=did)
                 if eval_r.get("success"):
                     auc   = eval_r["auc_roc"]
@@ -346,81 +393,100 @@ def _process(mfile, mname, ver, desc,
                     ntr   = eval_r["n_train"]
                     nte   = eval_r["n_test"]
                     mhash = eval_r["model_hash"]
-                    st.success("✅ Metrics computed from model evaluation!")
+                    _alert_box("Metrics computed from model evaluation!", "success")
                     c1,c2,c3,c4 = st.columns(4)
                     c1.metric("AUC-ROC", f"{auc:.4f}")
                     c2.metric("F1",      f"{f1:.4f}")
                     c3.metric("Recall",  f"{rec:.4f}")
                     c4.metric("Precision",f"{prec:.4f}")
                 else:
-                    st.warning(f"⚠️ Could not compute metrics: {eval_r.get('error','Unknown')}. Continuing with 0.0")
+                    _alert_box(f"Could not compute metrics: {eval_r.get('error','Unknown')}. Continuing with 0.0", "warning")
 
 
         # STEP 3 — MLflow (register if not already)
-        status.info("⏳ Step 3/7 — MLflow tracking...")
+        status.info("Step 3/7 — MLflow tracking...")
         prog.progress(30)
 
         if not run_id:
             try:
-                import mlflow, mlflow.sklearn
-                mlflow.set_tracking_uri(ML_URL)
-                mlflow.set_experiment(f"fraud-{mname}")
-                with mlflow.start_run(
-                        run_name=f"{mname}-v{ver}") as run:
-                    mlflow.log_metric("auc_roc",    auc)
-                    mlflow.log_metric("auc_pr",     apr)
-                    mlflow.log_metric("f1",         f1)
-                    mlflow.log_metric("precision",  prec)
-                    mlflow.log_metric("recall",     rec)
-                    mlflow.log_metric("n_train",    ntr)
-                    mlflow.log_metric("n_test",     nte)
-                    mlflow.log_param("model_type",  model_type)
-                    mlflow.log_param("version",     ver)
-                    mlflow.log_param("dataset_id",  did)
-                    mlflow.log_param("dataset_hash_dvc", dh)
-                    mlflow.log_param("model_hash_sha256", mhash)
-                    mlflow.log_param("submitted_by",submitted_by)
-                    mlflow.log_param("shap_explainer",shap_type)
-                    try:
-                        mlflow.sklearn.log_model(
-                            model, "model",
-                            registered_model_name=
-                            f"FraudDetection-{mname}")
-                    except:
-                        pass
-                    run_id = run.info.run_id
-                st.success(
-                    f"✅ MLflow run: {run_id[:16]}...")
+                import httpx as _hx
+                import time as _time
+
+                # Créer experiment
+                exp_r = _hx.get(f"{ML_URL}/api/2.0/mlflow/experiments/get-by-name",
+                    params={"experiment_name": f"fraud-{mname}"}, timeout=5)
+                if exp_r.status_code == 200:
+                    exp_id = exp_r.json()["experiment"]["experiment_id"]
+                else:
+                    cr = _hx.post(f"{ML_URL}/api/2.0/mlflow/experiments/create",
+                        json={"name": f"fraud-{mname}"}, timeout=5)
+                    exp_id = cr.json()["experiment_id"]
+
+                # Créer run
+                ts = int(_time.time() * 1000)
+                rr = _hx.post(f"{ML_URL}/api/2.0/mlflow/runs/create",
+                    json={"experiment_id": exp_id,
+                          "run_name": f"{mname}-v{ver}",
+                          "start_time": ts}, timeout=5)
+                run_id = rr.json()["run"]["info"]["run_id"]
+
+                # Logger métriques
+                for k,v2 in [("auc_roc",auc),("auc_pr",apr),("f1",f1),
+                              ("precision",prec),("recall",rec),
+                              ("n_train",float(ntr)),("n_test",float(nte))]:
+                    _hx.post(f"{ML_URL}/api/2.0/mlflow/runs/log-metric",
+                        json={"run_id":run_id,"key":k,"value":v2,
+                              "timestamp":ts,"step":0}, timeout=5)
+
+                # Logger params
+                for k,v2 in [("model_type",model_type),("version",ver),
+                              ("dataset_id",did),("dataset_hash_dvc",dh),
+                              ("model_hash_sha256",mhash),
+                              ("submitted_by",submitted_by),
+                              ("shap_explainer",shap_type)]:
+                    _hx.post(f"{ML_URL}/api/2.0/mlflow/runs/log-parameter",
+                        json={"run_id":run_id,"key":k,"value":str(v2)}, timeout=5)
+
+                # Terminer run
+                _hx.post(f"{ML_URL}/api/2.0/mlflow/runs/update",
+                    json={"run_id":run_id,"status":"FINISHED"}, timeout=5)
+
+                # Enregistrer dans Model Registry
+                reg_name = f"FraudDetection-{mname}"
+                _hx.post(f"{ML_URL}/api/2.0/mlflow/registered-models/create",
+                    json={"name": reg_name}, timeout=5)
+                _hx.post(f"{ML_URL}/api/2.0/mlflow/model-versions/create",
+                    json={"name": reg_name,
+                          "source": f"mlflow-artifacts:/{exp_id}/{run_id}/artifacts/model",
+                          "run_id": run_id}, timeout=5)
+
+                _alert_box(f"MLflow run: {run_id[:16]}... + Registry OK", "success")
             except Exception as e:
-                st.warning(f"⚠️ MLflow: {e}")
-                run_id = hashlib.sha256(
-                    mhash.encode()).hexdigest()[:16]
+                _alert_box(f"MLflow: {e}", "warning")
+                run_id = hashlib.sha256(mhash.encode()).hexdigest()[:16]
         else:
-            st.success(
-                f"✅ MLflow run linked: {run_id[:16]}...")
+            _alert_box(f"MLflow run linked: {run_id[:16]}...", "success")
 
         # STEP 4 — Policy Engine PR-005
-        status.info("⏳ Step 4/7 — Policy Engine PR-005...")
+        status.info("Step 4/7 — Policy Engine PR-005...")
         prog.progress(45)
 
         policy = _check_policy(auc, f1, rec, prec)
         passed = all(r["passed"] for r in policy)
 
-        st.subheader("📋 Policy Engine PR-005")
+        _card_header("Policy Engine PR-005", _ICON_SHIELD)
         cols = st.columns(len(policy))
         for i, r in enumerate(policy):
-            icon = "✅" if r["passed"] else "❌"
+            icon = "[PASS]" if r["passed"] else "[FAIL]"
             cols[i].metric(
                 f"{icon} {r['metric']}",
                 f"{r['value']:.4f}",
-                delta="✅ OK" if r["passed"]
-                else f"❌ Need +{r['gap']:.4f}")
+                delta="OK" if r["passed"]
+                else f"Need +{r['gap']:.4f}")
 
         if not passed:
-            st.error(
-                "🚫 Model BLOCKED by Policy Engine PR-005. "
-                "Does not meet regulatory thresholds.")
-            with st.expander("💡 Improvement Tips"):
+            _alert_box("Model BLOCKED by Policy Engine PR-005. Does not meet regulatory thresholds.", "error")
+            with st.expander("Improvement Tips"):
                 st.markdown(
                     "- Use `class_weight='balanced'`\n"
                     "- Increase training data\n"
@@ -428,10 +494,10 @@ def _process(mfile, mname, ver, desc,
                     "- Try XGBoost or LightGBM")
             return
 
-        st.success("✅ Policy PR-005 — All thresholds met!")
+        _alert_box("Policy PR-005 — All thresholds met!", "success")
 
         # STEP 5 — Global SHAP
-        status.info("⏳ Step 5/7 — Global SHAP...")
+        status.info("Step 5/7 — Global SHAP...")
         prog.progress(60)
 
         shap_data = {}
@@ -440,7 +506,7 @@ def _process(mfile, mname, ver, desc,
             shap_data = _compute_global_shap(
                 model, model_type, shap_type, did)
             if shap_data.get("global_importance"):
-                st.subheader("📊 Global SHAP Analysis")
+                _card_header("Global SHAP Analysis", _ICON_CHART)
                 df_shap = pd.DataFrame(
                     shap_data["global_importance"])
                 st.dataframe(
@@ -453,7 +519,7 @@ def _process(mfile, mname, ver, desc,
                     f"samples | {shap_type} explainer")
 
         # STEP 6 — Model Card → IPFS
-        status.info("⏳ Step 6/7 — Model Card → IPFS...")
+        status.info("Step 6/7 — Model Card → IPFS...")
         prog.progress(75)
 
         model_card_cid = ""
@@ -498,11 +564,9 @@ def _process(mfile, mname, ver, desc,
                 timeout=30)
             if r2.status_code == 200:
                 model_card_cid = r2.json().get("cid","")
-                st.success(
-                    f"✅ Model Card → IPFS: "
-                    f"`{model_card_cid[:25]}...`")
+                _alert_box(f"Model Card → IPFS: `{model_card_cid[:25]}...`", "success")
         except Exception as e:
-            st.warning(f"⚠️ IPFS: {e}")
+            _alert_box(f"IPFS Error: {e}", "warning")
 
         # Fallback CID
         if not model_card_cid:
@@ -512,7 +576,7 @@ def _process(mfile, mname, ver, desc,
                 ).hexdigest()[:38])
 
         # STEP 7 — Blockchain
-        status.info("⏳ Step 7/7 — Blockchain...")
+        status.info("Step 7/7 — Blockchain...")
         prog.progress(90)
 
         bc_ok = False
@@ -533,7 +597,7 @@ def _process(mfile, mname, ver, desc,
             res = r3.json()
             bc_ok = res.get("success", False)
         except Exception as e:
-            st.warning(f"⚠️ Blockchain: {e}")
+            _alert_box(f"Blockchain Error: {e}", "warning")
 
         # Link model → dataset
         if did:
@@ -549,17 +613,15 @@ def _process(mfile, mname, ver, desc,
         prog.progress(100)
         status.empty()
 
-        st.success(
-            f"🎉 **{mname}-v{ver}** submitted successfully!")
-        st.balloons()
+        _alert_box(f"**{mname}-v{ver}** submitted successfully!", "success")
 
         c1,c2,c3,c4 = st.columns(4)
         c1.metric("Type",      model_type)
         c2.metric("AUC-ROC",   f"{auc:.4f}")
         c3.metric("Blockchain",
-            "✅ SUBMITTED" if bc_ok else "⚠️ Pending")
+            "SUBMITTED" if bc_ok else "Pending")
         c4.metric("IPFS",
-            "✅" if model_card_cid else "⚠️")
+            "PINNED" if model_card_cid else "N/A")
 
         st.code(
             f"Model ID       : {mname}-v{ver}\n"
@@ -581,7 +643,7 @@ def _process(mfile, mname, ver, desc,
 
     except Exception as e:
         import traceback
-        st.error(f"❌ {e}")
+        _alert_box(str(e), "error")
         st.code(traceback.format_exc())
     finally:
         if os.path.exists(tmp_path):
@@ -589,7 +651,7 @@ def _process(mfile, mname, ver, desc,
 
 
 def _show_models():
-    st.subheader("📦 Registered Models")
+    _card_header("Registered Models", _ICON_PACKAGE)
     try:
         r = httpx.get(
             f"{ML_URL}/api/2.0/mlflow/"
@@ -617,9 +679,9 @@ def _show_models():
             except:
                 pass
             auc_v = met.get("auc_roc",0.0)
-            icon  = "✅" if auc_v>=0.95 else "⚠️"
+            icon_label = "[PASS]" if auc_v>=0.95 else "[WARN]"
             with st.expander(
-                f"{icon} **{m['name']}** "
+                f"{icon_label} {m['name']} "
                 f"v{v['version']} — AUC:{auc_v:.4f}"):
                 c1,c2,c3,c4 = st.columns(4)
                 c1.metric("AUC-ROC",f"{auc_v:.4f}")
@@ -633,4 +695,4 @@ def _show_models():
                     f"Run ID : {v['run_id']}\n"
                     f"Dataset: {par.get('dataset_id','N/A')}")
     except Exception as e:
-        st.warning(f"MLflow: {e}")
+        _alert_box(f"MLflow Error: {e}", "warning")

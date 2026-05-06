@@ -6,6 +6,10 @@ import hashlib
 import hmac
 from datetime import datetime
 from utils.api_client import API_URL
+from styles import (
+    _header, _card_header, _alert_box,
+    _ICON_SHIELD, _ICON_INFO, _ICON_CHECK, _ICON_WARNING, _ICON_ERROR, _ICON_HISTORY
+)
 
 TIMEOUT = 15
 
@@ -55,19 +59,24 @@ def _certify_report(report: dict, cid: str, auditor_id: str, signature: str, not
         return {"error": str(e)}
 
 def show(user: dict):
-    st.title("🔐 External Auditor — Report Certification")
-    st.caption("Verify and certify reports before submission to Regulator")
+    _header("Report Certification", _ICON_SHIELD)
+    st.markdown("""<style>
+      .stTabs [data-baseweb="tab-list"] button { color:#1C1C1C!important; font-weight:600!important; }
+      .stTabs [data-baseweb="tab-list"] button p { color:#1C1C1C!important; }
+      .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] { color:#1F7A5A!important; }
+      .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] p { color:#1F7A5A!important; }
+    </style>""", unsafe_allow_html=True)
 
-    tab1, tab2 = st.tabs(["🔐 Certify Reports", "📋 Certified Reports"])
+    tab1, tab2 = st.tabs(["Certify Reports", "Certified Reports"])
 
     with tab1:
-        st.subheader("📋 Pending Reports — Internal Auditor")
+        _card_header("Pending Reports — Internal Auditor", _ICON_HISTORY)
 
         with st.spinner("Loading reports from IPFS..."):
             reports = _get_pinned_reports()
 
         if not reports:
-            st.info("No reports found on IPFS yet.")
+            _alert_box("INFO", "No reports found on IPFS yet.", _ICON_INFO)
             return
 
         # Get certified CIDs to check which reports are already certified
@@ -82,9 +91,9 @@ def show(user: dict):
                       if "certified" not in r.get("name","").lower()
                       and r.get("cid","")[:16] not in certified_cids]
         if uncertified:
-            st.warning(f"⚠️ {len(uncertified)} report(s) pending certification")
+            _alert_box("WARNING", f"{len(uncertified)} report(s) pending certification", _ICON_WARNING)
         else:
-            st.success("✅ All reports are certified!")
+            _alert_box("SUCCESS", "All reports are certified!", _ICON_CHECK)
 
         for rep in reports:
             name = rep.get("name", "")
@@ -92,23 +101,23 @@ def show(user: dict):
             is_certified = "certified" in name.lower() or cid[:16] in certified_cids
             status_icon = "✅" if is_certified else "⏳"
 
-            with st.expander(f"{status_icon} **{name}** — {'CERTIFIED' if is_certified else 'PENDING'}"):
+            with st.expander(f"**{name}** — {'CERTIFIED' if is_certified else 'PENDING'}"):
                 st.markdown(f"**CID:** `{cid}`")
 
                 if is_certified:
-                    st.success("✅ Certified — available to Regulator")
+                    _alert_box("SUCCESS", "Certified — available to Regulator", _ICON_CHECK)
                     continue
 
                 # Load button
                 load_key = f"loaded_{cid}"
-                if st.button("🔍 Load & Verify", key=f"verify_{cid[:8]}"):
+                if st.button("Load & Verify", key=f"verify_{cid[:8]}"):
                     with st.spinner("Fetching from IPFS..."):
                         content = _get_report_content(cid)
                     if content:
                         st.session_state[load_key] = content
-                        st.success("✅ Report loaded!")
+                        _alert_box("SUCCESS", "Report loaded!", _ICON_CHECK)
                     else:
-                        st.error("❌ Could not retrieve report")
+                        _alert_box("ERROR", "Could not retrieve report", _ICON_ERROR)
 
                 # Show certification form if loaded
                 if load_key in st.session_state:
@@ -120,7 +129,7 @@ def show(user: dict):
                     st.code(f"Integrity Hash: {integrity_hash}")
 
                     st.markdown("---")
-                    st.markdown("**✍️ Your Decision:**")
+                    st.markdown("**Your Decision:**")
                     note = st.text_area(
                         "Notes (required)",
                         placeholder="e.g. Verified all metrics and compliance...",
@@ -128,7 +137,7 @@ def show(user: dict):
                         height=80)
                     col1, col2 = st.columns(2)
                     with col1:
-                        if st.button("✅ Certify & Sign", key=f"certify_{cid[:8]}", type="primary", use_container_width=True):
+                        if st.button("Certify & Sign", key=f"certify_{cid[:8]}", type="primary", use_container_width=True):
                             if len(note) < 10:
                                 st.error("Min 10 chars required")
                             else:
@@ -137,14 +146,13 @@ def show(user: dict):
                                 with st.spinner("Certifying..."):
                                     result = _certify_report(content, cid, auditor_id, signature, note)
                                 if result.get("cid"):
-                                    st.success("✅ Report certified!")
-                                    st.info(f"📌 CID: `{result['cid']}`")
+                                    _alert_box("SUCCESS", f"Report certified! &nbsp; CID: <code>{result['cid']}</code>", _ICON_CHECK)
                                     del st.session_state[load_key]
                                     st.rerun()
                                 else:
-                                    st.error(f"❌ {result}")
+                                    _alert_box("ERROR", str(result), _ICON_ERROR)
                     with col2:
-                        if st.button("❌ Reject", key=f"reject_{cid[:8]}", use_container_width=True):
+                        if st.button("Reject", key=f"reject_{cid[:8]}", use_container_width=True):
                             if len(note) < 10:
                                 st.error("Min 10 chars required")
                             else:
@@ -156,18 +164,21 @@ def show(user: dict):
                                               "name": f"rejected-{name[:30]}"}, timeout=10)
                                 except:
                                     pass
-                                st.error("❌ Report rejected!")
+                                _alert_box("ERROR", "Report rejected!", _ICON_ERROR)
                                 del st.session_state[load_key]
                                 st.rerun()
     with tab2:
-        st.subheader("📋 Certified Reports")
+        _card_header("Certified Reports", _ICON_CHECK)
         with st.spinner("Loading..."):
             all_files = _get_pinned_reports()
             certified = [f for f in all_files if "certified" in f.get("name","").lower()]
 
         if not certified:
-            st.info("No certified reports yet.")
+            _alert_box("INFO", "No certified reports yet.", _ICON_INFO)
         else:
-            st.success(f"✅ {len(certified)} certified report(s)")
+            _alert_box("SUCCESS", f"{len(certified)} certified report(s)", _ICON_CHECK)
             for rep in certified:
-                st.markdown(f"✅ **{rep.get('name','')}** — CID: `{rep.get('cid','')[:30]}...` — Ready for Regulator")
+                st.markdown(
+                    f"<span style='color:#16A34A;font-weight:bold;'>&#10003;</span>"
+                    f" **{rep.get('name','')}** — CID: `{rep.get('cid','')[:30]}...` — Ready for Regulator",
+                    unsafe_allow_html=True)

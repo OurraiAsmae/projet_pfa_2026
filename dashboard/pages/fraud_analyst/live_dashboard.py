@@ -5,6 +5,10 @@ import time
 from datetime import datetime
 from utils.api_client import get_active_model, API_URL
 import httpx
+from styles import (
+    _header, _card_header, _alert_box,
+    _ICON_CHART, _ICON_WARNING, _ICON_ERROR, _ICON_SUCCESS, _ICON_INFO
+)
 
 TIMEOUT = 10
 
@@ -30,13 +34,13 @@ def _get_stats() -> dict:
     return {}
 
 def show(user: dict):
-    st.title("📊 Live Fraud Dashboard")
+    _header("Live Fraud Dashboard", _ICON_CHART)
 
     # Auto-refresh
     col_title, col_refresh = st.columns([3, 1])
     with col_refresh:
-        auto = st.checkbox("🔄 Auto-refresh (10s)")
-        if st.button("🔄 Refresh Now"):
+        auto = st.checkbox("Auto-refresh (10s)")
+        if st.button("Refresh Now"):
             st.rerun()
 
     # Active model
@@ -46,7 +50,7 @@ def show(user: dict):
         <div style="background:#EFF6FF;border-left:4px solid #003366;
                     border-radius:8px;padding:.8rem;margin-bottom:1rem;">
             <span style="font-size:.75rem;color:#64748B;font-weight:600;">
-            🟢 ACTIVE MODEL</span><br/>
+            ACTIVE MODEL</span><br/>
             <span style="font-weight:700;color:#003366;">
             {active.get('model_id','N/A')}</span>
             <span style="color:#0052A3;font-size:.85rem;">
@@ -63,14 +67,14 @@ def show(user: dict):
     total    = fraude + ambigu + legitime if total == 0 else total
 
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("📊 Total Transactions", f"{total:,}")
-    c2.metric("🔴 Fraud (Auto-blocked)",
+    c1.metric("Total Transactions", f"{total:,}")
+    c2.metric("Fraud (Auto-blocked)",
               f"{fraude:,}",
               f"{fraude/total*100:.1f}%" if total > 0 else "0%")
-    c3.metric("🟡 Amber (Human Review)",
+    c3.metric("Amber (Human Review)",
               f"{ambigu:,}",
               f"{ambigu/total*100:.1f}%" if total > 0 else "0%")
-    c4.metric("🟢 Legitimate (Auto-approved)",
+    c4.metric("Legitimate (Auto-approved)",
               f"{legitime:,}",
               f"{legitime/total*100:.1f}%" if total > 0 else "0%")
 
@@ -81,19 +85,19 @@ def show(user: dict):
     with col1:
         zone_filter = st.multiselect(
             "Filter by Zone",
-            ["🔴 FRAUDE", "🟡 AMBIGU", "🟢 LEGITIME"],
-            default=["🔴 FRAUDE", "🟡 AMBIGU"])
+            ["FRAUDE", "AMBIGU", "LEGITIME"],
+            default=["FRAUDE", "AMBIGU"])
     with col2:
         limit = st.slider("Max transactions", 10, 100, 50)
     with col3:
         min_score = st.slider("Min score", 0.0, 1.0, 0.0)
 
     # Recent transactions
-    st.subheader("🔴 Recent Flagged Transactions")
+    _card_header("Recent Flagged Transactions", _ICON_WARNING)
     txs = _get_recent_transactions(limit)
 
     if not txs:
-        st.info("No recent transactions found. Transactions will appear here as they are processed.")
+        _alert_box("INFO", "No recent transactions found. Transactions will appear here as they are processed.", _ICON_INFO)
         # Show demo data
         _show_demo_table()
     else:
@@ -108,9 +112,9 @@ def show(user: dict):
 def _show_transactions_table(txs: list, zone_filter: list, min_score: float):
     """Display transactions table"""
     zone_map = {
-        "🔴 FRAUDE": "FRAUDE",
-        "🟡 AMBIGU": "AMBIGU",
-        "🟢 LEGITIME": "LEGITIME"
+        "FRAUDE": "FRAUDE",
+        "AMBIGU": "AMBIGU",
+        "LEGITIME": "LEGITIME"
     }
     allowed_zones = [zone_map[z] for z in zone_filter]
 
@@ -123,9 +127,8 @@ def _show_transactions_table(txs: list, zone_filter: list, min_score: float):
         if score < min_score:
             continue
 
-        zone_icon = {"FRAUDE": "🔴", "AMBIGU": "🟡", "LEGITIME": "🟢"}.get(zone, "⚪")
         rows.append({
-            "Zone":       f"{zone_icon} {zone}",
+            "Zone":       zone,
             "TX ID":      tx.get("tx_id", "")[:20],
             "Score":      f"{score:.4f}",
             "Amount":     f"{tx.get('montant_mad', 0):,.0f} MAD",
@@ -136,7 +139,7 @@ def _show_transactions_table(txs: list, zone_filter: list, min_score: float):
         })
 
     if not rows:
-        st.info("No transactions match the filter.")
+        _alert_box("INFO", "No transactions match the filter.", _ICON_INFO)
         return
 
     df = pd.DataFrame(rows)
@@ -156,9 +159,8 @@ def _show_demo_table():
         score = random.uniform(0.85, 0.99) if zone == "FRAUDE" else \
                 random.uniform(0.40, 0.85) if zone == "AMBIGU" else \
                 random.uniform(0.01, 0.39)
-        zone_icon = {"FRAUDE": "🔴", "AMBIGU": "🟡", "LEGITIME": "🟢"}[zone]
         rows.append({
-            "Zone":    f"{zone_icon} {zone}",
+            "Zone":    zone,
             "TX ID":   f"TX-DEMO-{i+1:03d}",
             "Score":   f"{score:.4f}",
             "Amount":  f"{random.randint(500,50000):,} MAD",

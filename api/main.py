@@ -395,6 +395,13 @@ async def predict(tx: Transaction):
             "rate_limit_info": rate_info, "velocity_info": velocity_info,
             "active_model": state["active_model_id"]
         }
+        # Enrichir result avec les champs originaux pour le dashboard
+        result["montant_mad"]      = tx.montant_mad
+        result["pays_transaction"] = tx.pays_transaction
+        result["device_type"]      = tx.device_type
+        result["heure"]            = tx.heure
+        result["client_id"]        = tx.client_id
+        result["card_id"]          = tx.card_id
         redis_client.mark_as_processed(tx.tx_id, result)
         redis_client.cache_decision(tx.tx_id, result)
     else:

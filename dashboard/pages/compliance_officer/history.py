@@ -2,13 +2,14 @@
 import streamlit as st
 import pandas as pd
 from utils.api_client import get_all_models_governance
+from styles import _header, _ICON_HISTORY, _alert_box, _ICON_INFO
 
 def show(user: dict):
-    st.title("📋 Validation History")
+    _header("Validation History", _ICON_HISTORY)
 
     models = get_all_models_governance()
     if not models:
-        st.info("No validation history yet.")
+        _alert_box("INFO", "No validation history yet.", _ICON_INFO)
         return
 
     # Filtrer les modèles traités par CO
@@ -17,7 +18,7 @@ def show(user: dict):
     filtered = [m for m in models if m.get("status") in statuses]
 
     if not filtered:
-        st.info("No validation history yet.")
+        _alert_box("INFO", "No validation history yet.", _ICON_INFO)
         return
 
     st.metric("Total Actions", len(filtered))

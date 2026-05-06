@@ -48,28 +48,28 @@ inject_css()
 
 # ── Route map ────────────────────────────────────────
 ROUTES = {
-    "👥 User Management":       admin_users,
-    "📋 Audit Logs":            admin_logs,
-    "📬 Notifications":         ds_notifications,
-    "📤 Upload Model":          ds_upload,
-    "📊 Upload Dataset":        ds_upload_dataset,
-    "🔬 MLflow Experiments":    ds_mlflow,
-    "🔍 SHAP Explorer":         ds_shap,
-    "✅ Compliance Validation":  co_validation,
-    "📋 Validation History":    co_history,
-    "🔧 Technical Approval":    mle_approval,
-    "🚀 Model Deployment":      mle_deployment,
-    "📜 Model History":         mle_history,
-    "📉 Drift Monitoring":      mle_drift,
-    "📊 Live Dashboard":        fa_dashboard,
-    "🚨 Alerts":                fa_alerts,
-    "📋 Audit Trail":           aud_trail,
-    "📄 Compliance Reports":    aud_reports,
-    "🔐 Integrity Check":       aud_certify,
-    "📋 Certified Reports":     aud_certify,
-    "🏛️ System Status":         reg_status,
-    "🔍 Inspection":            reg_status,
-    "📨 BAM Submissions":       reg_status,
+    "User Management":       admin_users,
+    "Audit Logs":            admin_logs,
+    "Notifications":         ds_notifications,
+    "Upload Model":          ds_upload,
+    "Upload Dataset":        ds_upload_dataset,
+    "MLflow Experiments":    ds_mlflow,
+    "SHAP Explorer":         ds_shap,
+    "Compliance Validation": co_validation,
+    "Validation History":    co_history,
+    "Technical Approval":    mle_approval,
+    "Model Deployment":      mle_deployment,
+    "Model History":         mle_history,
+    "Drift Monitoring":      mle_drift,
+    "Live Dashboard":        fa_dashboard,
+    "Alerts":                fa_alerts,
+    "Audit Trail":           aud_trail,
+    "Compliance Reports":    aud_reports,
+    "Integrity Check":       aud_certify,
+    "Certified Reports":     aud_certify,
+    "System Status":         reg_status,
+    "Inspection":            reg_status,
+    "BAM Submissions":       reg_status,
 }
 
 # ── Main ─────────────────────────────────────────────
@@ -87,9 +87,6 @@ def main():
     if user.get("role") == "Data Scientist":
         show_popup_if_notifications()
 
-
-    # Render top bar
-    render_topbar(page, user)
 
     # Route to page
     page_fn = ROUTES.get(page)

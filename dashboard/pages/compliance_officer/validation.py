@@ -13,6 +13,11 @@ from utils.api_client import (
     API_URL
 )
 from utils.model_registry import get_mlflow_bc_mapping
+from styles import (
+    _header, _card_header, _alert_box,
+    _ICON_SHIELD, _ICON_BLOCKCHAIN, _ICON_CHECK, _ICON_WARNING, _ICON_ERROR,
+    _ICON_PENDING, _ICON_INFO, _ICON_DATASET, _ICON_USER, _ICON_MODEL, _ICON_LINK
+)
 
 REJECT_CATEGORIES = [
     "AUC-ROC below threshold (< 0.95)",
@@ -31,24 +36,8 @@ REJECT_CATEGORIES = [
 ]
 
 def show(user: dict):
-    st.title("✅ Compliance Validation")
-    st.markdown("""
-    <div style="background:#EFF6FF;
-                border-left:4px solid #003366;
-                border-radius:8px;
-                padding:1rem;margin-bottom:1rem;">
-        <b>Compliance Officer is the FIRST validator</b><br/>
-        1️⃣ You validate regulatory compliance (here)<br/>
-        2️⃣ ML Engineer approves technically<br/>
-        3️⃣ ML Engineer deploys to production<br/><br/>
-        <b>Regulations:</b>
-        EU AI Act | SR 11-7 | Basel III | BAM Morocco
-    </div>
-    """, unsafe_allow_html=True)
+    _header("Compliance Validation", _ICON_SHIELD)
 
-    st.warning(
-        "Thresholds (BAM): "
-        "AUC-ROC ≥ 0.95 | F1 ≥ 0.85 | Recall ≥ 0.90")
 
     # Get all models with blockchain status
     with st.spinner("Loading models..."):
@@ -69,23 +58,17 @@ def show(user: dict):
 
     # ── PENDING ──────────────────────────────────
     if pending:
-        st.subheader(
-            f"⏳ Pending Compliance Review "
-            f"({len(pending)})")
+        _card_header(f"Pending Compliance Review ({len(pending)})", _ICON_PENDING)
         for name, info in pending.items():
             _render_card(name, info, user, "pending")
     else:
-        st.success(
-            "✅ No models pending compliance review")
+        _alert_box("SUCCESS", "No models pending compliance review", _ICON_CHECK)
 
     # ── ALREADY PROCESSED ────────────────────────
     if others:
-        st.subheader(
-            f"📋 Already Processed ({len(others)})")
+        _card_header(f"Already Processed ({len(others)})", _ICON_BLOCKCHAIN)
         for name, info in others.items():
-            with st.expander(
-                f"{_status_icon(info['bc_status'])} "
-                f"**{name}** — {info['bc_status']}"):
+            with st.expander(f"{name} — {info['bc_status']}"):
                 c1,c2,c3 = st.columns(3)
                 c1.metric("AUC-ROC",
                     f"{info['auc_roc']:.4f}")
@@ -96,18 +79,13 @@ def show(user: dict):
 
     # ── NOT ON BLOCKCHAIN ─────────────────────────
     if no_chain:
-        with st.expander(
-            f"⚠️ Not on Blockchain ({len(no_chain)})"
-            " — Need to be submitted first"):
+        with st.expander(f"Not on Blockchain ({len(no_chain)}) — Need to be submitted first"):
             for name, info in no_chain.items():
                 st.markdown(
-                    f"❓ **{name}** — "
+                    f"**{name}** — "
                     f"run_name: `{info['run_name']}` "
                     f"— Not found on blockchain")
-            st.info(
-                "These models were registered in MLflow "
-                "but not submitted to blockchain. "
-                "Ask Data Scientist to re-submit.")
+            _alert_box("WARNING", "These models were registered in MLflow but not submitted to blockchain. Ask Data Scientist to re-submit.", _ICON_WARNING)
 
 
 def _render_card(name: str, info: dict,
@@ -120,9 +98,7 @@ def _render_card(name: str, info: dict,
     ok   = auc>=0.95 and f1>=0.85 and rec>=0.90
 
     with st.expander(
-        f"{'✅' if ok else '❌'} **{name}** "
-        f"— {info['model_type']} "
-        f"— {info['bc_id']}",
+        f"{name} — {info['model_type']} — {info['bc_id']}",
         expanded=True):
 
         # Metrics card
@@ -144,7 +120,7 @@ def _render_card(name: str, info: dict,
                   {auc:.4f}</div>
               <div style="font-size:.7rem;
                   color:{'#16A34A' if auc>=0.95 else '#DC2626'};">
-                  {'✅ ≥0.95' if auc>=0.95 else f'❌ Need +{0.95-auc:.4f}'}</div>
+                  {'Target ≥0.95 met' if auc>=0.95 else f'Requires +{0.95-auc:.4f}'}</div>
             </div>
             <div>
               <div style="font-size:.7rem;color:#64748B;
@@ -155,7 +131,7 @@ def _render_card(name: str, info: dict,
                   {f1:.4f}</div>
               <div style="font-size:.7rem;
                   color:{'#16A34A' if f1>=0.85 else '#DC2626'};">
-                  {'✅ ≥0.85' if f1>=0.85 else f'❌ Need +{0.85-f1:.4f}'}</div>
+                  {'Target ≥0.85 met' if f1>=0.85 else f'Requires +{0.85-f1:.4f}'}</div>
             </div>
             <div>
               <div style="font-size:.7rem;color:#64748B;
@@ -166,7 +142,7 @@ def _render_card(name: str, info: dict,
                   {rec:.4f}</div>
               <div style="font-size:.7rem;
                   color:{'#16A34A' if rec>=0.90 else '#DC2626'};">
-                  {'✅ ≥0.90' if rec>=0.90 else f'❌ Need +{0.90-rec:.4f}'}</div>
+                  {'Target ≥0.90 met' if rec>=0.90 else f'Requires +{0.90-rec:.4f}'}</div>
             </div>
             <div>
               <div style="font-size:.7rem;color:#64748B;
@@ -179,17 +155,17 @@ def _render_card(name: str, info: dict,
           <div style="font-size:.8rem;color:#64748B;
               padding-top:.6rem;
               border-top:1px solid #E2E8F0;">
-            📊 Dataset: <b>{info['dataset_id']}</b>
+            Dataset: <b>{info['dataset_id']}</b>
             &nbsp;|&nbsp;
-            👤 By: <b>{info['submitted_by']}</b>
+            By: <b>{info['submitted_by']}</b>
             &nbsp;|&nbsp;
-            🔗 BC: <code>{info['bc_id']}</code>
+            BC: <code>{info['bc_id']}</code>
           </div>
         </div>
         """, unsafe_allow_html=True)
 
         # Regulatory checklist
-        st.subheader("📋 Regulatory Checklist")
+        _card_header("Regulatory Checklist", _ICON_SHIELD)
         checks = [
             ("AUC-ROC ≥ 0.95 (BAM threshold)",
              auc >= 0.95),
@@ -210,30 +186,24 @@ def _render_card(name: str, info: dict,
         for i, (label, passed) in enumerate(checks):
             with cols[i % 3]:
                 st.markdown(
-                    f"{'✅' if passed else '❌'} "
-                    f"{label}")
+                    f"<span style='color:{'#16A34A' if passed else '#DC2626'};font-weight:bold;'>"
+                    f"{'✓' if passed else '✗'}</span> "
+                    f"{label}", unsafe_allow_html=True)
 
         # Decision
-        st.subheader("🎯 Compliance Decision")
+        _card_header("Compliance Decision", _ICON_CHECK)
         tab_validate, tab_reject = st.tabs([
-            "✅ Validate", "❌ Reject"])
+            "Validate", "Reject"])
 
         with tab_validate:
             if not ok:
-                st.error(
-                    "❌ Cannot validate — "
-                    "Metrics below BAM thresholds")
+                _alert_box("ERROR", "Cannot validate — Metrics below BAM thresholds", _ICON_ERROR)
             else:
-                st.success(
-                    "✅ All thresholds met — "
-                    "Ready for compliance validation")
-                st.info(
-                    "After validation:\n"
-                    "→ ML Engineer will approve technically\n"
-                    "→ Then deploy to production")
+                _alert_box("SUCCESS", "All thresholds met — Ready for compliance validation", _ICON_CHECK)
+                _alert_box("INFO", "After validation:<br/>&rarr; ML Engineer will approve technically<br/>&rarr; Then deploy to production", _ICON_INFO)
 
                 if st.button(
-                    "✅ Validate Compliance",
+                    "Validate Compliance",
                     key=f"val_{name}",
                     type="primary",
                     disabled=not ok,
@@ -247,23 +217,15 @@ def _render_card(name: str, info: dict,
                                 info["bc_id"],
                                 user["username"],
                                 info)
-                            st.success(
-                                f"✅ **{info['bc_id']}** "
-                                f"compliance validated!")
-                            st.info(
-                                "→ ML Engineer can now "
-                                "approve technically")
+                            _alert_box("SUCCESS", f"**{info['bc_id']}** compliance validated!", _ICON_CHECK)
+                            _alert_box("INFO", "→ ML Engineer can now approve technically", _ICON_INFO)
                             time.sleep(2)
                             st.rerun()
                         else:
-                            st.error(
-                                f"❌ {result.get('output',result.get('error','Error'))}")
+                            _alert_box("ERROR", result.get('output',result.get('error','Error')), _ICON_ERROR)
 
         with tab_reject:
-            st.warning(
-                "Rejection requires a written "
-                "regulatory report — "
-                "recorded on blockchain.")
+            _alert_box("WARNING", "Rejection requires a written regulatory report — recorded on blockchain.", _ICON_WARNING)
 
             with st.form(key=f"reject_{name}"):
                 category = st.selectbox(
@@ -301,15 +263,13 @@ def _render_card(name: str, info: dict,
                     key=f"rec_{name}")
 
                 submitted = st.form_submit_button(
-                    "❌ Submit Rejection",
+                    "Submit Rejection",
                     type="primary",
                     use_container_width=True)
 
             if submitted:
                 if len(justification) < 50:
-                    st.error(
-                        "❌ Minimum 50 characters "
-                        "required for justification.")
+                    _alert_box("ERROR", "Minimum 50 characters required for justification.", _ICON_ERROR)
                 else:
                     full = (
                         f"[CO_REJECT] [{category}] "
@@ -328,9 +288,7 @@ def _render_card(name: str, info: dict,
                                 justification,
                                 recommended,
                                 info)
-                            st.error(
-                                f"❌ **{info['bc_id']}** "
-                                f"rejected")
+                            _alert_box("ERROR", f"**{info['bc_id']}** rejected", _ICON_ERROR)
                             st.markdown(f"""
                             <div style="background:#FEF2F2;
                                 border:1px solid #FECACA;
@@ -345,18 +303,18 @@ def _render_card(name: str, info: dict,
                             time.sleep(2)
                             st.rerun()
                         else:
-                            st.error(
-                                f"❌ {r2.get('output',r2.get('error'))}")
+                            _alert_box("ERROR", r2.get('output',r2.get('error', 'Error')), _ICON_ERROR)
 
 
 def _status_icon(status: str) -> str:
+    from styles import _ICON_PENDING, _ICON_CHECK, _ICON_SHIELD, _ICON_BLOCKCHAIN, _ICON_ERROR, _ICON_WARNING
     return {
-        "SUBMITTED":            "📋",
-        "COMPLIANCE_VALIDATED": "✅",
-        "TECHNICAL_APPROVED":   "🔧",
-        "DEPLOYED":             "🚀",
-        "REVOKED":              "❌",
-    }.get(status, "❓")
+        "SUBMITTED":            _ICON_PENDING,
+        "COMPLIANCE_VALIDATED": _ICON_CHECK,
+        "TECHNICAL_APPROVED":   _ICON_SHIELD,
+        "DEPLOYED":             _ICON_BLOCKCHAIN,
+        "REVOKED":              _ICON_ERROR,
+    }.get(status, _ICON_WARNING)
 
 
 def _pin_validation_report(model_id, officer,
