@@ -2,7 +2,7 @@
 
 > **Plateforme de Gouvernance IA pour le Secteur Bancaire**  
 > Hyperledger Fabric 2.5 · FastAPI · Streamlit · MLflow · RabbitMQ · Redis · MySQL (Dockerisé)  
-> *PFA 2026 — Asmae Ourrai · Safae El Ouajidi · Marwa M'haya*
+> *Asmae Ourrai · Safae El Ouajidi · Marwa M'haya*
 
 Ce guide documente le déploiement **entièrement automatisé et corrigé** du projet. Contrairement aux versions précédentes, **l'authentification MySQL est désormais intégrée à la stack Docker**, éliminant le besoin d'installer WAMP Server ou MySQL localement sur l'hôte Windows.
 
@@ -29,7 +29,7 @@ Clonez le dépôt Git dans votre répertoire utilisateur sous WSL ou Linux :
 
 ```bash
 cd ~
-git clone https://github.com/OurraiAsmae/projet_pfa_2026.git fraud-governance-system
+git clone https://github.com/elouajidisafae/BlockMLGov.git fraud-governance-system
 cd fraud-governance-system
 ```
 
@@ -195,4 +195,4 @@ docker network rm fraud-governance-net
 
 ---
 
-*BlockML-Gov v4.0 — Projet PFA 2026*
+*BlockML-Gov v4.0*
