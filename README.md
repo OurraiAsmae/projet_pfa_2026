@@ -73,13 +73,16 @@ To deploy and run BlockML-Gov, you will need:
 
 ## 🚀 Installation & Deployment
 
+> [!NOTE]
+> For a detailed, step-by-step walkthrough of the environment setup and network initialization, please refer to the [Installation Guide (GUIDE_INSTALLATION.md)](./GUIDE_INSTALLATION.md).
+
 Follow these steps to deploy the entire stack (Hyperledger Fabric network + application services):
 
 ### 1. Clone the Project & Prepare Fabric Binaries
 Clone the repository and ensure you have `fabric-samples` installed in your home directory:
 ```bash
 cd ~
-git clone https://github.com/OurraiAsmae/projet_pfa_2026.git fraud-governance-system
+git clone https://github.com/elouajidisafae/BlockMLGov.git fraud-governance-system
 cd fraud-governance-system
 ```
 *If you do not have Hyperledger Fabric v2.5.0 binaries installed locally, run:*
@@ -176,5 +179,5 @@ This software is licensed under the **MIT License**. See the [LICENSE](./LICENSE
 ## 👥 Contributors
 
 * **Asmae Ourrai** — ML Pipeline integration, API backend, and end-to-end system orchestration.
-* **Safae El Ouajidi** — Blockchain infrastructure, Hyperledger Fabric network, channels, and smart contracts.
+* **Safae El Ouajidi** — Blockchain architecture, Hyperledger Fabric channels, and cross-environment deployment reliability.
 * **Marwa M'haya** — ML model development, training, and evaluation.
