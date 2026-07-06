@@ -3,8 +3,8 @@
   "name": "transactions_bancaires",
   "version": "v1",
   "hash": "sha256:88fd9f20436ef10616b66e4e44acd793e25f265ea604a5103eb536efae3081a0",
-  "card_cid": "QmWXRQebZaqUVxoZUFHrmq3H7Hqg6HyT9tCWuLci6pDvfy",
-  "analysis_cid": "QmXVYyhfVpV4sgPdkQMSpLyPBwXvSKpGa7SUN9f7P91vUc",
+  "card_cid": "QmSIM78c7620370d6265b0932ce2e613cc0ead7cbbd",
+  "analysis_cid": "QmXj8XnEEyei5dDMFreLJF482MpBNM4jucJezxs3MkZCJ6",
   "csv_path": "/app/mlops/datasets/transactions_bancaires_v1_88fd9f20.csv",
   "n_rows": 50000,
   "n_cols": 25,
@@ -12,7 +12,7 @@
   "quality_score": 100,
   "quality_rating": "Excellent \u2705",
   "uploaded_by": "data.scientist1",
-  "uploaded_at": "2026-04-22T20:24:36.396995",
+  "uploaded_at": "2026-07-06T00:13:25.966980",
   "features": [
     "heure",
     "jour_semaine",
@@ -36,16 +36,8 @@
     "risque_horaire",
     "motif_fraude"
   ],
-  "blockchain_registered": false,
+  "blockchain_registered": true,
   "models_trained": [
-    "log-FraudDetection-v1.0",
-    "Forest-FraudDetection-v1.0",
-    "logistic-v1.0",
-    "loftest-FraudDetection-v1.0",
-    "Random_FraudDetection-v1.0",
-    "testlog_FraudDetection-v1.0",
-    "testlog-FraudDetection-v1.0",
-    "RandomForest-FraudDetection-v1.0",
     "RandomForest-FraudDetection-v2.0"
   ]
 }

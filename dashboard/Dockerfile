@@ -11,7 +11,8 @@ RUN pip install --no-cache-dir \
     mlflow==2.9.2 \
     pandas==2.2.3 \
     scikit-learn==1.8.0 \
-    xgboost==2.0.3
+    xgboost==2.0.3 \
+    pika==1.3.2
 
 # Copy all dashboard files
 COPY app.py .

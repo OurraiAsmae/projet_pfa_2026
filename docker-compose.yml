@@ -97,11 +97,11 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - /home/asmae/fraud-governance-system/mlops:/app/mlops
-      - /home/asmae/fraud-governance-system/redis:/app/redis_lib
-      - /home/asmae/fraud-governance-system/blockchain/network/crypto-material:/home/asmae/fraud-governance-system/blockchain/network/crypto-material:ro
-      - /home/asmae/fraud-governance-system/blockchain/network:/home/asmae/fraud-governance-system/blockchain/network:ro
-      - /home/asmae/fraud-governance-system/fabric-samples/bin/peer:/usr/local/bin/peer:ro
+      - ${PWD}/mlops:/app/mlops
+      - ${PWD}/redis:/app/redis_lib
+      - ${PWD}/blockchain/network/crypto-material:/app/blockchain/network/crypto-material:ro
+      - ${PWD}/blockchain/network:/app/blockchain/network:ro
+      - ${PWD}/fabric-samples/bin/peer:/usr/local/bin/peer:ro
     environment:
       - REDIS_HOST=redis
       - GATEWAY_URL=http://host.gateway.internal:9999
@@ -128,8 +128,8 @@ services:
       context: .
       dockerfile: streaming/Dockerfile
     volumes:
-      - /home/asmae/fraud-governance-system/mlops:/app/mlops
-      - /home/asmae/fraud-governance-system/redis:/app/redis_lib
+      - ${PWD}/mlops:/app/mlops
+      - ${PWD}/redis:/app/redis_lib
     environment:
       - REDIS_HOST=redis
       - GATEWAY_URL=http://host.gateway.internal:9999
@@ -142,9 +142,9 @@ services:
     ports:
       - "9999:9999"
     volumes:
-      - /home/asmae/fraud-governance-system/blockchain/network/crypto-material:/crypto-material:ro
-      - /home/asmae/fraud-governance-system/blockchain/network:/fabric-config:ro
-      - /home/asmae/fraud-governance-system/fabric-samples/bin:/fabric-bin:ro
+      - ${PWD}/blockchain/network/crypto-material:/crypto-material:ro
+      - ${PWD}/blockchain/network:/fabric-config:ro
+      - ${PWD}/fabric-samples/bin:/fabric-bin:ro
     environment:
       - CRYPTO_PATH=/crypto-material
       - FABRIC_CFG_PATH=/fabric-config
@@ -160,8 +160,8 @@ services:
   drift-monitor:
     build: ./drift
     volumes:
-      - /home/asmae/fraud-governance-system/mlops:/app/mlops
-      - /home/asmae/fraud-governance-system/redis:/app/redis_lib
+      - ${PWD}/mlops:/app/mlops
+      - ${PWD}/redis:/app/redis_lib
     environment:
       - REDIS_HOST=redis
       - GATEWAY_URL=http://gateway:9999
@@ -195,12 +195,26 @@ services:
     networks: [fraud-net]
     restart: unless-stopped
 
+  mysql:
+    image: mysql:8.0
+    container_name: blockmlgov-mysql
+    ports:
+      - "33066:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: blockmlgov_auth
+      MYSQL_USER: blockmlgov
+      MYSQL_PASSWORD: BlockML@2026!
+    volumes:
+      - ./auth-service/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks: [fraud-net]
+
   auth-service:
     build: ./auth-service
     ports:
       - "8001:8001"
     environment:
-      - MYSQL_HOST=172.29.112.1
+      - MYSQL_HOST=mysql
       - MYSQL_PORT=3306
       - MYSQL_USER=blockmlgov
       - MYSQL_PASSWORD=BlockML@2026!
@@ -208,6 +222,8 @@ services:
       - JWT_SECRET=blockmlgov-jwt-secret-2026-production!
       - ACCESS_TOKEN_EXPIRE_MINUTES=60
       - REFRESH_TOKEN_EXPIRE_DAYS=7
+    depends_on:
+      - mysql
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks: [fraud-net]

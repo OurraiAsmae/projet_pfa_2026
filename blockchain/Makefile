@@ -1,10 +1,11 @@
 SHELL := /bin/bash
-FABRIC_BIN := $(HOME)/fraud-governance-system/fabric-samples/bin
-NETWORK_DIR := $(HOME)/fraud-governance-system/blockchain/network
-CC_DIR := $(HOME)/fraud-governance-system/blockchain/chaincodes
-SCRIPTS_DIR := $(HOME)/fraud-governance-system/blockchain/scripts
+PROJECT_ROOT := $(abspath $(CURDIR)/..)
+FABRIC_BIN := $(PROJECT_ROOT)/fabric-samples/bin
+NETWORK_DIR := $(PROJECT_ROOT)/blockchain/network
+CC_DIR := $(PROJECT_ROOT)/blockchain/chaincodes
+SCRIPTS_DIR := $(PROJECT_ROOT)/blockchain/scripts
 
-MGCC_SEQ := 2
+MGCC_SEQ := 1
 FDCC_SEQ := 1
 CCC_SEQ  := 1
 
@@ -22,21 +23,21 @@ deploy: deploy-mgcc deploy-fdcc deploy-ccc
 	@echo "✅ Les 3 chaincodes déployés"
 
 deploy-mgcc:
-	@source $(HOME)/fabric-env.sh && \
+	@source $(CURDIR)/fabric-env.sh && \
 	bash $(SCRIPTS_DIR)/deploy-chaincode.sh model-governance-cc modelgovernance $(MGCC_SEQ)
 
 deploy-fdcc:
-	@source $(HOME)/fabric-env.sh && \
+	@source $(CURDIR)/fabric-env.sh && \
 	bash $(SCRIPTS_DIR)/deploy-chaincode.sh fraud-detection-cc frauddetection $(FDCC_SEQ)
 
 deploy-ccc:
-	@source $(HOME)/fabric-env.sh && \
+	@source $(CURDIR)/fabric-env.sh && \
 	bash $(SCRIPTS_DIR)/deploy-chaincode.sh compliance-cc compliance $(CCC_SEQ)
-	@source $(HOME)/fabric-env.sh && \
+	@source $(CURDIR)/fabric-env.sh && \
 	bash $(SCRIPTS_DIR)/deploy-chaincode.sh compliance-cc regulatory $(CCC_SEQ)
 
 init-ledger:
-	@source $(HOME)/fabric-env.sh && \
+	@source $(CURDIR)/fabric-env.sh && \
 	CORE_PEER_TLS_ENABLED=true \
 	CORE_PEER_LOCALMSPID="BankMSP" \
 	CORE_PEER_MSPCONFIGPATH="$$BANK_ADMIN" \
@@ -47,7 +48,7 @@ init-ledger:
 	  -C modelgovernance -n model-governance-cc \
 	  -c '{"function":"InitLedger","Args":[]}' && echo "✅ mgcc initialisé"
 	@sleep 2
-	@source $(HOME)/fabric-env.sh && \
+	@source $(CURDIR)/fabric-env.sh && \
 	CORE_PEER_TLS_ENABLED=true \
 	CORE_PEER_LOCALMSPID="BankMSP" \
 	CORE_PEER_MSPCONFIGPATH="$$BANK_ADMIN" \
@@ -58,7 +59,7 @@ init-ledger:
 	  -C frauddetection -n fraud-detection-cc \
 	  -c '{"function":"InitLedger","Args":[]}' && echo "✅ fdcc initialisé"
 	@sleep 2
-	@source $(HOME)/fabric-env.sh && \
+	@source $(CURDIR)/fabric-env.sh && \
 	CORE_PEER_TLS_ENABLED=true \
 	CORE_PEER_LOCALMSPID="BankMSP" \
 	CORE_PEER_MSPCONFIGPATH="$$BANK_ADMIN" \
@@ -75,17 +76,17 @@ init-ledger:
 verify: verify-channels verify-chaincodes
 
 verify-channels:
-	@echo "=== Bank ===" && source $(HOME)/fabric-env.sh && \
+	@echo "=== Bank ===" && source $(CURDIR)/fabric-env.sh && \
 	CORE_PEER_TLS_ENABLED=true CORE_PEER_LOCALMSPID="BankMSP" \
 	CORE_PEER_MSPCONFIGPATH="$$BANK_ADMIN" CORE_PEER_ADDRESS="$$BANK_PEER" \
 	CORE_PEER_TLS_ROOTCERT_FILE="$$BANK_TLS" $(FABRIC_BIN)/peer channel list
-	@echo "=== Regulator ===" && source $(HOME)/fabric-env.sh && \
+	@echo "=== Regulator ===" && source $(CURDIR)/fabric-env.sh && \
 	CORE_PEER_TLS_ENABLED=true CORE_PEER_LOCALMSPID="RegulatorMSP" \
 	CORE_PEER_MSPCONFIGPATH="$$REGULATOR_ADMIN" CORE_PEER_ADDRESS="$$REGULATOR_PEER" \
 	CORE_PEER_TLS_ROOTCERT_FILE="$$REGULATOR_TLS" $(FABRIC_BIN)/peer channel list
 
 verify-chaincodes:
-	@source $(HOME)/fabric-env.sh && \
+	@source $(CURDIR)/fabric-env.sh && \
 	CORE_PEER_TLS_ENABLED=true CORE_PEER_LOCALMSPID="BankMSP" \
 	CORE_PEER_MSPCONFIGPATH="$$BANK_ADMIN" CORE_PEER_ADDRESS="$$BANK_PEER" \
 	CORE_PEER_TLS_ROOTCERT_FILE="$$BANK_TLS" \
@@ -108,7 +109,7 @@ clean:
 	@echo "✅ Nettoyé"
 
 verify-chaincodes:
-	@source $(HOME)/fabric-env.sh && \
+	@source $(CURDIR)/fabric-env.sh && \
 	CORE_PEER_TLS_ENABLED=true \
 	CORE_PEER_LOCALMSPID="BankMSP" \
 	CORE_PEER_MSPCONFIGPATH="$$BANK_ADMIN" \

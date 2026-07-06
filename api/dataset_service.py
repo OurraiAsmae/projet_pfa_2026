@@ -503,7 +503,7 @@ class DatasetService:
             gw_url = os.getenv("GATEWAY_URL",
                                "http://gateway:9999")
             r = httpx.post(
-                f"{gw_url}/model/dataset",
+                f"{gw_url}/submit-dataset",
                 json={
                     "dataset_id":    dataset_id,
                     "hash":          hash_val,

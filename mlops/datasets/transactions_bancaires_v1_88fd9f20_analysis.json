@@ -1,6 +1,6 @@
 {
   "dataset_id": "DS-transactions_bancaires-v1",
-  "timestamp": "2026-04-22T20:24:39.459370",
+  "timestamp": "2026-07-06T00:13:29.980077",
   "feature_importance": [
     {
       "feature": "ratio_montant_moy",

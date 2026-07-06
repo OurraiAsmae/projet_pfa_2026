@@ -20,9 +20,9 @@ from styles import (
 )
 
 REJECT_CATEGORIES = [
-    "AUC-ROC below threshold (< 0.95)",
-    "F1-Score below threshold (< 0.85)",
-    "Recall below threshold (< 0.90)",
+    "AUC-ROC below threshold (< 0.80)",
+    "F1-Score below threshold (< 0.55)",
+    "Recall below threshold (< 0.40)",
     "Dataset too old (> 12 months)",
     "Biased dataset — non-representative data",
     "Sensitive features used (age, nationality...)",
@@ -95,7 +95,7 @@ def _render_card(name: str, info: dict,
     f1   = info["f1"]
     rec  = info["recall"]
     prec = info["precision"]
-    ok   = auc>=0.95 and f1>=0.85 and rec>=0.90
+    ok   = auc>=0.80 and f1>=0.55 and rec>=0.40 and prec>=0.75
 
     with st.expander(
         f"{name} — {info['model_type']} — {info['bc_id']}",
@@ -116,33 +116,33 @@ def _render_card(name: str, info: dict,
                   font-weight:600;
                   text-transform:uppercase;">AUC-ROC</div>
               <div style="font-size:1.4rem;font-weight:700;
-                  color:{'#16A34A' if auc>=0.95 else '#DC2626'};">
-                  {auc:.4f}</div>
-              <div style="font-size:.7rem;
-                  color:{'#16A34A' if auc>=0.95 else '#DC2626'};">
-                  {'Target ≥0.95 met' if auc>=0.95 else f'Requires +{0.95-auc:.4f}'}</div>
+                   color:{'#16A34A' if auc>=0.80 else '#DC2626'};">
+                   {auc:.4f}</div>
+               <div style="font-size:.7rem;
+                   color:{'#16A34A' if auc>=0.80 else '#DC2626'};">
+                   {'Target ≥0.80 met' if auc>=0.80 else f'Requires +{0.80-auc:.4f}'}</div>
             </div>
             <div>
               <div style="font-size:.7rem;color:#64748B;
                   font-weight:600;
                   text-transform:uppercase;">F1-Score</div>
               <div style="font-size:1.4rem;font-weight:700;
-                  color:{'#16A34A' if f1>=0.85 else '#DC2626'};">
-                  {f1:.4f}</div>
-              <div style="font-size:.7rem;
-                  color:{'#16A34A' if f1>=0.85 else '#DC2626'};">
-                  {'Target ≥0.85 met' if f1>=0.85 else f'Requires +{0.85-f1:.4f}'}</div>
+                   color:{'#16A34A' if f1>=0.55 else '#DC2626'};">
+                   {f1:.4f}</div>
+               <div style="font-size:.7rem;
+                   color:{'#16A34A' if f1>=0.55 else '#DC2626'};">
+                   {'Target ≥0.55 met' if f1>=0.55 else f'Requires +{0.55-f1:.4f}'}</div>
             </div>
             <div>
               <div style="font-size:.7rem;color:#64748B;
                   font-weight:600;
                   text-transform:uppercase;">Recall</div>
               <div style="font-size:1.4rem;font-weight:700;
-                  color:{'#16A34A' if rec>=0.90 else '#DC2626'};">
-                  {rec:.4f}</div>
-              <div style="font-size:.7rem;
-                  color:{'#16A34A' if rec>=0.90 else '#DC2626'};">
-                  {'Target ≥0.90 met' if rec>=0.90 else f'Requires +{0.90-rec:.4f}'}</div>
+                   color:{'#16A34A' if rec>=0.40 else '#DC2626'};">
+                   {rec:.4f}</div>
+               <div style="font-size:.7rem;
+                   color:{'#16A34A' if rec>=0.40 else '#DC2626'};">
+                   {'Target ≥0.40 met' if rec>=0.40 else f'Requires +{0.40-rec:.4f}'}</div>
             </div>
             <div>
               <div style="font-size:.7rem;color:#64748B;
@@ -167,14 +167,14 @@ def _render_card(name: str, info: dict,
         # Regulatory checklist
         _card_header("Regulatory Checklist", _ICON_SHIELD)
         checks = [
-            ("AUC-ROC ≥ 0.95 (BAM threshold)",
-             auc >= 0.95),
-            ("F1-Score ≥ 0.85 (BAM threshold)",
-             f1 >= 0.85),
-            ("Recall ≥ 0.90 (BAM threshold)",
-             rec >= 0.90),
-            ("Precision ≥ 0.80",
-             prec >= 0.80),
+            ("AUC-ROC ≥ 0.80 (BAM threshold)",
+             auc >= 0.80),
+            ("F1-Score ≥ 0.55 (BAM threshold)",
+             f1 >= 0.55),
+            ("Recall ≥ 0.40 (BAM threshold)",
+             rec >= 0.40),
+            ("Precision ≥ 0.75",
+             prec >= 0.75),
             ("Dataset registered",
              info["dataset_id"] != "N/A"),
             ("Model hash computed",

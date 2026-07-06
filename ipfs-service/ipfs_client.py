@@ -168,7 +168,7 @@ class IPFSClient:
             f"model-card-{model_id}")
 
         # Save locally too
-        local_save = (f"/home/asmae/fraud-governance-system/mlops/model_cards/"
+        local_save = (f"/app/mlops/model_cards/"
                       f"model_card_{model_id}.json")
         os.makedirs(os.path.dirname(local_save), exist_ok=True)
         with open(local_save, "w") as f:
