@@ -1,9 +1,10 @@
 #!/bin/bash
-source ~/fabric-env.sh
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../fabric-env.sh"
 
-ORDERER_TLS_DIR=~/fraud-governance-system/blockchain/network/crypto-material/ordererOrganizations/fraud-governance.com/orderers/orderer.fraud-governance.com/tls
-BLOCKS=~/fraud-governance-system/blockchain/network/channel-artifacts
-FABRIC_BIN=~/fraud-governance-system/fabric-samples/bin
+ORDERER_TLS_DIR="$PROJECT_ROOT/blockchain/network/crypto-material/ordererOrganizations/fraud-governance.com/orderers/orderer.fraud-governance.com/tls"
+BLOCKS="$PROJECT_ROOT/blockchain/network/channel-artifacts"
+FABRIC_BIN="$PROJECT_ROOT/fabric-samples/bin"
 
 echo ">>> Création channels sur orderer..."
 for CHANNEL in modelgovernance frauddetection compliance regulatory; do

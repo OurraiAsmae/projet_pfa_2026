@@ -6,6 +6,7 @@ RUN pip install --no-cache-dir \
     fastapi==0.109.0 \
     uvicorn==0.27.0 \
     pymysql==1.1.0 \
+    cryptography==42.0.2 \
     bcrypt==4.1.2 \
     PyJWT==2.8.0 \
     pydantic[email]==2.5.0

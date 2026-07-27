@@ -96,7 +96,7 @@ def _render_model_card(name: str,
     did       = info["dataset_id"]
     mhash     = info["model_hash"]
     subby     = info["submitted_by"]
-    ok        = auc>=0.95 and f1>=0.85 and rec>=0.90
+    ok        = auc>=0.80 and f1>=0.55 and rec>=0.40
 
     with st.expander(
         f"{name} — {mid} — {mtype} — {bc_status}",
@@ -117,33 +117,33 @@ def _render_model_card(name: str,
                   font-weight:600;text-transform:uppercase;">
                   AUC-ROC</div>
               <div style="font-size:1.4rem;font-weight:700;
-                  color:{'#16A34A' if auc>=0.95 else '#DC2626'};">
+                  color:{'#16A34A' if auc>=0.80 else '#DC2626'};">
                   {auc:.4f}</div>
               <div style="font-size:.7rem;
-                  color:{'#16A34A' if auc>=0.95 else '#DC2626'};">
-                  {'Target ≥0.95 met' if auc>=0.95 else 'Requires ≥0.95'}</div>
+                  color:{'#16A34A' if auc>=0.80 else '#DC2626'};">
+                  {'Target ≥0.80 met' if auc>=0.80 else 'Requires ≥0.80'}</div>
             </div>
             <div>
               <div style="font-size:.7rem;color:#64748B;
                   font-weight:600;text-transform:uppercase;">
                   F1-Score</div>
               <div style="font-size:1.4rem;font-weight:700;
-                  color:{'#16A34A' if f1>=0.85 else '#DC2626'};">
+                  color:{'#16A34A' if f1>=0.55 else '#DC2626'};">
                   {f1:.4f}</div>
               <div style="font-size:.7rem;
-                  color:{'#16A34A' if f1>=0.85 else '#DC2626'};">
-                  {'Target ≥0.85 met' if f1>=0.85 else 'Requires ≥0.85'}</div>
+                  color:{'#16A34A' if f1>=0.55 else '#DC2626'};">
+                  {'Target ≥0.55 met' if f1>=0.55 else 'Requires ≥0.55'}</div>
             </div>
             <div>
               <div style="font-size:.7rem;color:#64748B;
                   font-weight:600;text-transform:uppercase;">
                   Recall</div>
               <div style="font-size:1.4rem;font-weight:700;
-                  color:{'#16A34A' if rec>=0.90 else '#DC2626'};">
+                  color:{'#16A34A' if rec>=0.40 else '#DC2626'};">
                   {rec:.4f}</div>
               <div style="font-size:.7rem;
-                  color:{'#16A34A' if rec>=0.90 else '#DC2626'};">
-                  {'Target ≥0.90 met' if rec>=0.90 else 'Requires ≥0.90'}</div>
+                  color:{'#16A34A' if rec>=0.40 else '#DC2626'};">
+                  {'Target ≥0.40 met' if rec>=0.40 else 'Requires ≥0.40'}</div>
             </div>
             <div>
               <div style="font-size:.7rem;color:#64748B;

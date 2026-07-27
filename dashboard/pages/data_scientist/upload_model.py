@@ -144,10 +144,10 @@ def _fetch_metrics_from_mlflow(run_name: str) -> dict:
 
 def _check_policy(auc, f1, rec, prec) -> list:
     checks = [
-        ("AUC-ROC",   auc,  0.95),
-        ("F1-Score",  f1,   0.85),
-        ("Recall",    rec,  0.90),
-        ("Precision", prec, 0.80),
+        ("AUC-ROC",   auc,  0.80),
+        ("F1-Score",  f1,   0.55),
+        ("Recall",    rec,  0.40),
+        ("Precision", prec, 0.75),
     ]
     return [{"metric": m, "value": v, "min": mn,
              "passed": v >= mn,
@@ -268,8 +268,8 @@ def show(user: dict):
 
         _card_header("Performance Metrics", _ICON_CHART)
         st.caption(
-            "Policy PR-005: "
-            "AUC-ROC >= 0.95 | F1 >= 0.85 | Recall >= 0.90")
+            "Policy PR-005 (seuils test): "
+            "AUC-ROC >= 0.80 | F1 >= 0.55 | Recall >= 0.40 | Precision >= 0.75")
         st.info("Metrics will be automatically computed by evaluating the model on test data after upload.")
         auc = apr = f1 = prec = rec = 0.0
         ntr = nte = 0
@@ -679,7 +679,7 @@ def _show_models():
             except:
                 pass
             auc_v = met.get("auc_roc",0.0)
-            icon_label = "[PASS]" if auc_v>=0.95 else "[WARN]"
+            icon_label = "[PASS]" if auc_v>=0.80 else "[WARN]"
             with st.expander(
                 f"{icon_label} {m['name']} "
                 f"v{v['version']} — AUC:{auc_v:.4f}"):

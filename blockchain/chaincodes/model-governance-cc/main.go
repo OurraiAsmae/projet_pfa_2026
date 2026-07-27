@@ -511,6 +511,73 @@ func (c *ModelGovernanceContract) GetAllModels(ctx contractapi.TransactionContex
 	return string(data), nil
 }
 
+// ─── Dataset Governance ───────────────────────────────────────────────────────
+
+type DatasetAsset struct {
+	DatasetID    string  `json:"datasetID"`
+	Hash         string  `json:"hash"`
+	CID          string  `json:"cid"`
+	Version      string  `json:"version"`
+	NRows        string  `json:"nRows"`
+	FraudRate    string  `json:"fraudRate"`
+	QualityScore string  `json:"qualityScore"`
+	UploadedBy   string  `json:"uploadedBy"`
+	RegisteredAt string  `json:"registeredAt"`
+	Status       string  `json:"status"`
+}
+
+// RegisterDataset enregistre un dataset sur le ledger.
+// Args: datasetID, hash, cid, version, nRows, fraudRate, qualityScore, uploadedBy
+func (c *ModelGovernanceContract) RegisterDataset(
+	ctx contractapi.TransactionContextInterface,
+	datasetID, hash, cid, version, nRows, fraudRate, qualityScore, uploadedBy string,
+) error {
+	key := "DATASET_" + datasetID
+	existing, _ := ctx.GetStub().GetState(key)
+	if existing != nil {
+		return fmt.Errorf("dataset %s existe deja", datasetID)
+	}
+
+	callerID, err := getCallerID(ctx)
+	if err != nil {
+		callerID = uploadedBy
+	}
+
+	asset := DatasetAsset{
+		DatasetID:    datasetID,
+		Hash:         hash,
+		CID:          cid,
+		Version:      version,
+		NRows:        nRows,
+		FraudRate:    fraudRate,
+		QualityScore: qualityScore,
+		UploadedBy:   callerID,
+		RegisteredAt: getTxTime(ctx),
+		Status:       "REGISTERED",
+	}
+
+	data, _ := json.Marshal(asset)
+	if err := ctx.GetStub().PutState(key, data); err != nil {
+		return fmt.Errorf("impossible d'enregistrer le dataset %s: %v", datasetID, err)
+	}
+	ctx.GetStub().SetEvent("DATASET_REGISTERED", data)
+	return nil
+}
+
+// GetDataset retourne les métadonnées d'un dataset
+func (c *ModelGovernanceContract) GetDataset(
+	ctx contractapi.TransactionContextInterface,
+	datasetID string,
+) (*DatasetAsset, error) {
+	data, _ := ctx.GetStub().GetState("DATASET_" + datasetID)
+	if data == nil {
+		return nil, fmt.Errorf("dataset %s introuvable", datasetID)
+	}
+	var asset DatasetAsset
+	json.Unmarshal(data, &asset)
+	return &asset, nil
+}
+
 func main() {
 	cc, err := contractapi.NewChaincode(&ModelGovernanceContract{})
 	if err != nil {

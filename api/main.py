@@ -740,8 +740,8 @@ import subprocess
 
 def peer_query_local(function: str, args: list, msp_user: str = "Admin@bank.fraud-governance.com") -> dict:
     """Appelle le peer chaincode query depuis l'API"""
-    crypto_path = "/home/asmae/fraud-governance-system/blockchain/network/crypto-material"
-    fabric_cfg  = "/home/asmae/fraud-governance-system/blockchain/network"
+    crypto_path = "/app/blockchain/network/crypto-material"
+    fabric_cfg  = "/app/blockchain/network"
     peer_bin    = "/usr/local/bin/peer"
     args_json   = json.dumps({"function": function, "Args": args})
     cmd = [peer_bin, "chaincode", "query",
@@ -773,8 +773,8 @@ def peer_query_local(function: str, args: list, msp_user: str = "Admin@bank.frau
 
 def peer_invoke_local(function: str, args: list, msp_user: str = "Admin@bank.fraud-governance.com") -> dict:
     """Appelle le peer chaincode invoke depuis l'API"""
-    crypto_path = "/home/asmae/fraud-governance-system/blockchain/network/crypto-material"
-    fabric_cfg = "/home/asmae/fraud-governance-system/blockchain/network"
+    crypto_path = "/app/blockchain/network/crypto-material"
+    fabric_cfg = "/app/blockchain/network"
     peer_bin = "/usr/local/bin/peer"
     
     args_json = json.dumps({"function": function, "Args": args})
@@ -896,8 +896,8 @@ async def get_all_models():
 @app.get("/governance/model/{model_id}")
 async def api_get_model(model_id: str):
     """Get model status depuis blockchain"""
-    crypto_path = "/home/asmae/fraud-governance-system/blockchain/network/crypto-material"
-    fabric_cfg = "/home/asmae/fraud-governance-system/blockchain/network"
+    crypto_path = "/app/blockchain/network/crypto-material"
+    fabric_cfg = "/app/blockchain/network"
     peer_bin = "/usr/local/bin/peer"
     
     args_json = json.dumps({"function": "GetModel", "Args": [model_id]})
@@ -1202,8 +1202,8 @@ async def pin_json_to_ipfs(request: dict):
 async def governance_submit_model(request: dict):
     """Submit model to blockchain via peer binary"""
     import subprocess
-    crypto = "/home/asmae/fraud-governance-system/blockchain/network/crypto-material"
-    fabric_cfg = "/home/asmae/fraud-governance-system/blockchain/network"
+    crypto = "/app/blockchain/network/crypto-material"
+    fabric_cfg = "/app/blockchain/network"
     peer_bin = "/usr/local/bin/peer"
 
     model_id     = request.get("model_id","")
@@ -1442,7 +1442,9 @@ async def evaluate_model_upload(
                 matches = glob.glob(f"{datasets_dir}/*{h}*.csv")
                 dataset_path = matches[0] if matches else ""
         if not dataset_path:
-            dataset_path = f"{datasets_dir}/transactions_bancaires_v2_9adb21e7.csv"
+            # Auto-discover the first available versioned CSV as fallback
+            all_csvs = sorted(glob.glob(f"{datasets_dir}/transactions_bancaires_v*.csv"))
+            dataset_path = all_csvs[0] if all_csvs else f"{datasets_dir}/transactions_bancaires.csv"
 
     # Save uploaded file to temp
     content = await file.read()

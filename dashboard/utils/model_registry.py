@@ -67,7 +67,7 @@ def get_mlflow_bc_mapping() -> dict:
                         "run_name":     run_name,
                         "version":      params.get("version","1.0"),
                         "model_type":   params.get("model_type","Unknown"),
-                        "dataset_id":   params.get("dataset","N/A"),
+                        "dataset_id":   params.get("dataset_id", params.get("dataset", "N/A")),
                         "submitted_by": params.get("submitted_by","Unknown"),
                         "model_hash":   params.get("model_hash_sha256","N/A"),
                         "auc_roc":      metrics.get("auc_roc", 0),

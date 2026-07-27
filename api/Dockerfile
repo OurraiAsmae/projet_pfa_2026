@@ -7,4 +7,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY main.py .
 COPY shap_service.py .
+COPY dataset_service.py .
+COPY model_loader.py .
+COPY ipfs_client.py .
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
