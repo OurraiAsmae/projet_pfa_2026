@@ -82,7 +82,7 @@ Follow these steps to deploy the entire stack (Hyperledger Fabric network + appl
 Clone the repository and ensure you have `fabric-samples` installed in your home directory:
 ```bash
 cd ~
-git clone https://github.com/elouajidisafae/BlockMLGov.git fraud-governance-system
+git clone -b blockmlgov https://github.com/OurraiAsmae/projet_pfa_2026.git fraud-governance-system
 cd fraud-governance-system
 ```
 *If you do not have Hyperledger Fabric v2.5.0 binaries installed locally, run:*

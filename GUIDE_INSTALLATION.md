@@ -29,7 +29,7 @@ Clonez le dépôt Git dans votre répertoire utilisateur sous WSL ou Linux :
 
 ```bash
 cd ~
-git clone https://github.com/elouajidisafae/BlockMLGov.git fraud-governance-system
+git clone -b blockmlgov https://github.com/OurraiAsmae/projet_pfa_2026.git fraud-governance-system
 cd fraud-governance-system
 ```
 
